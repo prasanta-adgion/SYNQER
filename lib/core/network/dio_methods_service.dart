@@ -29,6 +29,7 @@ class DioMethodsService {
   // ───────────────── TOKEN ─────────────────
 
   void updateToken(String? token) {
+    debugPrint("Updating auth token in DIO: $token");
     _authToken = token;
   }
 
@@ -41,7 +42,7 @@ class DioMethodsService {
           final requiresAuth = options.extra['requiresAuth'] ?? true;
 
           if (requiresAuth && _authToken != null) {
-            options.headers['Authorization'] = 'Bearer $_authToken';
+            options.headers['userToken'] = _authToken;
           }
 
           if (kDebugMode) {
@@ -80,7 +81,8 @@ class DioMethodsService {
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );
 
-      return _handleResponse(response);
+      // return _handleResponse(response);
+      return response.data;
     } on DioException catch (e) {
       return _handleError(e);
     }
@@ -98,7 +100,8 @@ class DioMethodsService {
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );
 
-      return _handleResponse(response);
+      // return _handleResponse(response);
+      return response.data;
     } on DioException catch (e) {
       return _handleError(e);
     }
@@ -116,7 +119,8 @@ class DioMethodsService {
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );
 
-      return _handleResponse(response);
+      // return _handleResponse(response);
+      return response.data;
     } on DioException catch (e) {
       return _handleError(e);
     }
@@ -124,20 +128,20 @@ class DioMethodsService {
 
   // ───────────────── RESPONSE HANDLING ─────────────────
 
-  Map<String, dynamic> _handleResponse(Response response) {
-    final success =
-        response.statusCode != null &&
-        response.statusCode! >= 200 &&
-        response.statusCode! < 300;
+  // Map<String, dynamic> _handleResponse(Response response) {
+  //   final success =
+  //       response.statusCode != null &&
+  //       response.statusCode! >= 200 &&
+  //       response.statusCode! < 300;
 
-    return {
-      "success": success,
-      "data": response.data,
-      "message":
-          response.data?["message"] ?? (success ? "Success" : "Request failed"),
-      "statusCode": response.statusCode,
-    };
-  }
+  //   return {
+  //     "success": success,
+  //     "data": response.data,
+  //     "message":
+  //         response.data?["message"] ?? (success ? "Success" : "Request failed"),
+  //     "statusCode": response.statusCode,
+  //   };
+  // }
 
   Map<String, dynamic> _handleError(DioException error) {
     switch (error.type) {
@@ -209,7 +213,8 @@ class DioMethodsService {
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );
 
-      return _handleResponse(response);
+      // return _handleResponse(response);
+      return response.data;
     } on DioException catch (e) {
       return _handleError(e);
     }

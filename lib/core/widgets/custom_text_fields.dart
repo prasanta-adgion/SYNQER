@@ -2,6 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:synqer_io/core/theme/app_colors.dart';
+import 'package:synqer_io/core/theme/theme_scope.dart'; // adjust path if needed
+
+/// Theme variants supported by [CustomTextFormField].
+enum TextFieldTheme { light, dark }
 
 class CustomTextFormField extends StatefulWidget {
   final TextEditingController controller;
@@ -20,6 +25,9 @@ class CustomTextFormField extends StatefulWidget {
   final VoidCallback? onTap;
   final int maxLines;
 
+  /// Theme to apply. Defaults to [TextFieldTheme.light].
+  final TextFieldTheme themeMode;
+
   const CustomTextFormField({
     super.key,
     required this.controller,
@@ -37,6 +45,7 @@ class CustomTextFormField extends StatefulWidget {
     this.onChanged,
     this.onTap,
     this.maxLines = 1,
+    this.themeMode = TextFieldTheme.light,
   });
 
   @override
@@ -46,6 +55,22 @@ class CustomTextFormField extends StatefulWidget {
 class _CustomTextFormFieldState extends State<CustomTextFormField> {
   late final FocusNode _focusNode;
   final ValueNotifier<bool> _isFocused = ValueNotifier(false);
+
+  // ── Light theme palette (original) ────────────────────────────────────────
+  static const _lightFill = Color(0xFFF7F7F7);
+  static const _lightText = Colors.black;
+  static const _lightHint = Color(0xFFBBBBBB);
+  static const _lightIconIdle = Color(0xFF888888);
+  static const _lightIconFocus = Colors.black54;
+  static const _lightBorder = Colors.black12;
+  static const _lightBorderFocus = Colors.black38;
+
+  // ── Dark theme palette (neutrals only; accent comes from AppColors) ───────
+  static const _darkFill = Color(0xFF141C2A);
+  static const _darkText = Color(0xFFEEF2FF);
+  static const _darkHint = Color(0xFF3A4A65);
+  static const _darkIconIdle = Color(0xFF6B7A99);
+  static const _darkBorder = Color(0xFF1F2D42);
 
   @override
   void initState() {
@@ -63,8 +88,26 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
     super.dispose();
   }
 
+  bool get _isDark => widget.themeMode == TextFieldTheme.dark;
+
+  Color get _fillColor => _isDark ? _darkFill : _lightFill;
+  Color get _textColor => _isDark ? _darkText : _lightText;
+  Color get _hintColor => _isDark ? _darkHint : _lightHint;
+  Color get _iconIdleColor => _isDark ? _darkIconIdle : _lightIconIdle;
+  Color get _iconFocusColor =>
+      _isDark ? context.colors.primary : _lightIconFocus;
+  Color get _borderColor => _isDark ? _darkBorder : _lightBorder;
+  Color get _borderFocusColor =>
+      _isDark ? context.colors.primary : _lightBorderFocus;
+
   @override
   Widget build(BuildContext context) {
+    // Responsive font scaling (clamped to keep layout sane)
+    final width = MediaQuery.of(context).size.width;
+    final scale = (width / 375).clamp(0.85, 1.15);
+    final fontSize = 14.0 * scale;
+    final hintSize = 13.0 * scale;
+
     return ValueListenableBuilder<bool>(
       valueListenable: _isFocused,
       builder: (context, isFocused, _) {
@@ -81,36 +124,36 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
           inputFormatters: widget.inputFormatters,
           onChanged: widget.onChanged,
           maxLines: widget.isPassword ? 1 : widget.maxLines,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black,
+          cursorColor: context.colors.primary,
+          style: TextStyle(
+            fontSize: fontSize,
+            color: _textColor,
             fontWeight: FontWeight.w500,
           ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: const Color(0xFFF7F7F7),
-            enabledBorder: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-              borderSide: BorderSide(color: Colors.black12),
+            fillColor: _fillColor,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: const BorderRadius.all(Radius.circular(12)),
+              borderSide: BorderSide(color: _borderColor),
             ),
-            focusedBorder: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-              borderSide: BorderSide(color: Colors.black38),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: const BorderRadius.all(Radius.circular(12)),
+              borderSide: BorderSide(color: _borderFocusColor, width: 1.5),
             ),
-            errorBorder: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-              borderSide: BorderSide(color: Colors.redAccent, width: 1),
+            errorBorder: OutlineInputBorder(
+              borderRadius: const BorderRadius.all(Radius.circular(12)),
+              borderSide: BorderSide(color: context.colors.error, width: 1),
             ),
-            focusedErrorBorder: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-              borderSide: BorderSide(color: Colors.redAccent, width: 1),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: const BorderRadius.all(Radius.circular(12)),
+              borderSide: BorderSide(color: context.colors.error, width: 1.5),
             ),
-            // Fix: icon aligned with text via constraints + color shift on focus
             prefixIcon: widget.fieldIcon != null
                 ? Icon(
                     widget.fieldIcon,
-                    color: isFocused ? Colors.black54 : const Color(0xFF888888),
-                    size: 20,
+                    color: isFocused ? _iconFocusColor : _iconIdleColor,
+                    size: 18 * scale,
                   )
                 : null,
             prefixIconConstraints: const BoxConstraints(
@@ -119,16 +162,16 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
             ),
             labelText: widget.labelText,
             hintText: widget.hint_text,
-            hintStyle: const TextStyle(color: Color(0xFFBBBBBB), fontSize: 13),
-            errorStyle: const TextStyle(fontSize: 10),
+            hintStyle: TextStyle(color: _hintColor, fontSize: hintSize),
+            errorStyle: TextStyle(fontSize: 11, color: context.colors.error),
             alignLabelWithHint: true,
             suffixIconConstraints: const BoxConstraints(
               minWidth: 0,
               minHeight: 0,
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16 * scale,
+              vertical: 16 * scale,
             ),
             suffixIcon: widget.suffixIcon != null
                 ? Padding(

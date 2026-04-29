@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:synqer_io/core/theme/theme_scope.dart';
 import '../theme/app_colors.dart';
 
 enum SnackbarType { success, error, info }
@@ -14,17 +15,17 @@ class AppSnackbar {
 
     switch (type) {
       case SnackbarType.success:
-        bgColor = AppColors.green;
+        bgColor = context.colors.green;
         icon = Icons.check_circle_outline;
         break;
 
       case SnackbarType.error:
-        bgColor = AppColors.error;
+        bgColor = context.colors.error;
         icon = Icons.error_outline;
         break;
 
       case SnackbarType.info:
-        bgColor = AppColors.info;
+        bgColor = context.colors.info;
         icon = Icons.info_outline;
         break;
     }

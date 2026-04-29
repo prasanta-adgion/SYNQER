@@ -13,16 +13,10 @@ class LoginRepo {
     required String password,
   }) async {
     final response = await dio.post(APIsEndPoints.login, {
-      "email": email,
+      "username": email,
       "password": password,
     });
 
-    // Ensure consistent structure
-    if (response is Map<String, dynamic>) {
-      return response;
-    }
-
-    // Fallback safety (very important)
-    return {"success": false, "message": "Unexpected response format"};
+    return response;
   }
 }
