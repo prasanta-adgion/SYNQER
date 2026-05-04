@@ -1,25 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:intl/intl.dart';
-
-class ChatDateTime {
-  final String date;
-  final String time;
-
-  ChatDateTime({required this.date, required this.time});
-}
-
-ChatDateTime parseChatDateTime(String isoDate) {
-  try {
-    final dateTime = DateTime.parse(isoDate).toLocal();
-
-    final date = DateFormat('dd MMM yyyy').format(dateTime);
-    final time = DateFormat('h:mm a').format(dateTime);
-
-    return ChatDateTime(date: date, time: time);
-  } catch (e) {
-    return ChatDateTime(date: '', time: '');
-  }
-}
+import 'package:synqer_io/core/utils/date_time_utils.dart';
 
 class ConversionsChatData extends Equatable {
   final String? customerName;
@@ -42,7 +22,7 @@ class ConversionsChatData extends Equatable {
   });
 
   factory ConversionsChatData.fromJson(Map<String, dynamic> json) {
-    final parsed = parseChatDateTime(json['lastMessageAt'] ?? '');
+    final parsed = DateTimeUtils.parseChatDateTime(json['lastMessageAt'] ?? '');
 
     return ConversionsChatData(
       customerName: json['customerName'] ?? '',

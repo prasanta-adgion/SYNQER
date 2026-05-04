@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:synqer_io/core/theme/app_colors.dart';
 import 'package:synqer_io/core/theme/theme_picker_sheet.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/features/dashboard/widgets/header_section.dart';
 import 'package:synqer_io/features/live_conversions/live_convertsions_screen.dart';
 
 class ActivityItem {
@@ -181,8 +182,7 @@ class _MainScreenState extends State<MainScreen>
               );
             })
             .toList()
-            .reversed
-            .toList(),
+            .reversed,
 
         GestureDetector(
           onTap: _toggleFab,
@@ -294,170 +294,12 @@ class _FabItem {
   const _FabItem({required this.icon, required this.label});
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SHARED HEADER  (now with theme toggle button)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _Header extends StatelessWidget {
-  final String title;
-  final String subtitle;
-
-  const _Header({required this.title, required this.subtitle});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-
-    return Padding(
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 16,
-        left: 20,
-        right: 20,
-        bottom: 20,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: c.textSecondary,
-                    fontSize: 12,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: c.textPrimary,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // ── Theme toggle ────────────────────────────────────────────────
-          _ThemeToggleButton(),
-          const SizedBox(width: 10),
-          const _IconBtn(icon: Icons.notifications_none_rounded, badge: true),
-          const SizedBox(width: 10),
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [c.primary, c.secondary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              border: Border.all(color: c.border, width: 2),
-            ),
-            child: Center(
-              child: Text(
-                'R',
-                style: TextStyle(
-                  color: c.onBrand,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Tap = quick cycle. Long-press = open picker sheet.
-class _ThemeToggleButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final controller = context.themeController;
-
-    return GestureDetector(
-      onTap: controller.cycle,
-      onLongPress: () => ThemePickerSheet.show(context),
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: c.surface,
-          shape: BoxShape.circle,
-          border: Border.all(color: c.border),
-        ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          transitionBuilder: (child, anim) =>
-              ScaleTransition(scale: anim, child: child),
-          child: Icon(
-            controller.mode.icon,
-            key: ValueKey(controller.mode),
-            color: c.textSecondary,
-            size: 18,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 String _greeting() {
   final h = DateTime.now().hour;
   if (h < 12) return 'Good morning';
   if (h < 17) return 'Good afternoon';
   return 'Good evening';
 }
-
-class _IconBtn extends StatelessWidget {
-  final IconData icon;
-  final bool badge;
-  const _IconBtn({required this.icon, this.badge = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: c.surface,
-            shape: BoxShape.circle,
-            border: Border.all(color: c.border),
-          ),
-          child: Icon(icon, color: c.textSecondary, size: 18),
-        ),
-        if (badge)
-          Positioned(
-            top: 7,
-            right: 7,
-            child: Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(
-                color: c.primary,
-                shape: BoxShape.circle,
-                border: Border.all(color: c.bg, width: 1.5),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED WIDGETS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -566,7 +408,7 @@ class DashboardPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Header(title: 'Rajesh Kumar', subtitle: _greeting()),
+          HeaderSection(title: 'Rajesh Kumar', subtitle: _greeting()),
 
           _Card(
             child: Column(
@@ -1266,7 +1108,10 @@ class AllLeadsPage extends StatelessWidget {
 
     return Column(
       children: [
-        _Header(title: 'All Leads', subtitle: '${leads.length} total contacts'),
+        HeaderSection(
+          title: 'All Leads',
+          subtitle: '${leads.length} total contacts',
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Container(
@@ -1449,7 +1294,7 @@ class ConversionsPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Header(title: 'Conversions', subtitle: 'Performance overview'),
+          HeaderSection(title: 'Conversions', subtitle: 'Performance overview'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: GridView.builder(
@@ -1654,7 +1499,10 @@ class ContactPage extends StatelessWidget {
 
     return Column(
       children: [
-        _Header(title: 'Contacts', subtitle: '${contacts.length} contacts'),
+        HeaderSection(
+          title: 'Contacts',
+          subtitle: '${contacts.length} contacts',
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(

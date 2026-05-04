@@ -2,53 +2,33 @@
 
 import 'package:flutter/material.dart';
 
-// class AppColors {
-//   // Brand
-//   static const Color primary = Color(0xFF301BF3);
-//   static const Color secondary = Color(0xFF5E4AE5);
-
-//   // Semantic
-//   static const Color green = Color(0xFF27AE60);
-//   static const Color error = Colors.redAccent;
-//   static const Color info = Color(0xFF413D81);
-
-//   // Text
-//   static const Color textPrimary = Color(0xFFEFF3FF);
-//   static final Color textSecondary = Colors.white.withOpacity(0.55);
-//   static final Color textMuted = Colors.white.withOpacity(0.25);
-// }
-
-/// Color tokens for both light and dark themes.
-///
-/// Never use these directly in widgets — go through `context.colors`
-/// so the UI rebuilds correctly when the theme changes.
 class AppColors {
-  // ─── Brand (shared across both themes) ───────────────────────────────────
   final Color primary;
   final Color secondary;
 
-  // ─── Semantic ────────────────────────────────────────────────────────────
   final Color green;
   final Color error;
   final Color info;
 
-  // ─── Surfaces ────────────────────────────────────────────────────────────
   final Color bg;
   final Color surface;
   final Color surfaceHigh;
 
-  // ─── Borders ─────────────────────────────────────────────────────────────
   final Color border;
   final Color borderStrong;
 
-  // ─── Text ────────────────────────────────────────────────────────────────
+  // ─── Text
   final Color textPrimary;
   final Color textSecondary;
   final Color textMuted;
 
-  // ─── Misc ────────────────────────────────────────────────────────────────
-  /// Used for text/icons placed on top of the brand gradient.
   final Color onBrand;
+
+  // ─── Overlays
+  final Color dropdown;
+  final Color dropdownDivider;
+  final Color bottomSheet;
+  final Color bottomSheetHandle;
 
   const AppColors({
     required this.primary,
@@ -65,9 +45,13 @@ class AppColors {
     required this.textSecondary,
     required this.textMuted,
     required this.onBrand,
+    required this.dropdown,
+    required this.dropdownDivider,
+    required this.bottomSheet,
+    required this.bottomSheetHandle,
   });
 
-  // ─── Dark theme ──────────────────────────────────────────────────────────
+  // ─── Dark theme ───────────────────────────────────────────────────────────
   static final AppColors dark = AppColors(
     primary: const Color(0xFF301BF3),
     secondary: const Color(0xFF5E4AE5),
@@ -87,9 +71,17 @@ class AppColors {
     textMuted: Colors.white.withOpacity(0.25),
 
     onBrand: Colors.white,
+
+    // Slightly lighter than surface so menus visually float above content
+    dropdown: const Color(0xFF1C1C1E),
+    dropdownDivider: Colors.white.withOpacity(0.07),
+
+    // Matches surfaceHigh — sits one step above surface in the z-stack
+    bottomSheet: const Color(0xFF141414),
+    bottomSheetHandle: Colors.white.withOpacity(0.18),
   );
 
-  // ─── Light theme ─────────────────────────────────────────────────────────
+  // ─── Light theme ──────────────────────────────────────────────────────────
   static final AppColors light = AppColors(
     primary: const Color(0xFF301BF3),
     secondary: const Color(0xFF5E4AE5),
@@ -109,5 +101,13 @@ class AppColors {
     textMuted: Colors.black.withOpacity(0.30),
 
     onBrand: Colors.white,
+
+    // Pure white so dropdown floats above the off-white bg
+    dropdown: const Color(0xFFFFFFFF),
+    dropdownDivider: Colors.black.withOpacity(0.06),
+
+    // Pure white bottom sheet over the #FAFAFA scaffold
+    bottomSheet: const Color(0xFFFFFFFF),
+    bottomSheetHandle: Colors.black.withOpacity(0.14),
   );
 }

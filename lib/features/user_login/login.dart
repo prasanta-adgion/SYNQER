@@ -6,6 +6,7 @@ import 'package:synqer_io/core/app_injector.dart'; // adjust path if needed
 import 'package:synqer_io/core/theme/app_colors.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/token_storage.dart';
+import 'package:synqer_io/core/utils/app_images.dart';
 import 'package:synqer_io/core/widgets/app_snackbar.dart';
 import 'package:synqer_io/core/widgets/custom_text_fields.dart';
 import 'package:synqer_io/features/dashboard/dashboard.dart';
@@ -76,8 +77,7 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  // ── Login logic ───────────────────────────────────────────────────────────
-
+  //Login Fun
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -96,7 +96,6 @@ class _LoginScreenState extends State<LoginScreen>
 
       final token = response["userToken"];
 
-      // Save token securely
       await TokenStorage.saveToken(token);
 
       // Update Dio auth token
@@ -130,7 +129,6 @@ class _LoginScreenState extends State<LoginScreen>
       _isLoading.value = false;
     }
   }
-  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -170,13 +168,18 @@ class _LoginScreenState extends State<LoginScreen>
                     final width = MediaQuery.of(context).size.width;
                     final scale = (width / 375).clamp(0.85, 1.15);
 
-                    final headerHeight = (constraints.maxHeight * 0.28).clamp(
-                      140.0,
-                      220.0,
-                    );
+                    final keyboardOpen =
+                        MediaQuery.of(context).viewInsets.bottom > 0;
+
+                    final headerHeight = keyboardOpen
+                        ? 90.0
+                        : (constraints.maxHeight * 0.28).clamp(140.0, 220.0);
 
                     return SingleChildScrollView(
                       physics: const ClampingScrollPhysics(),
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).viewInsets.bottom,
+                      ),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
                           minHeight: constraints.maxHeight,
@@ -189,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 height: headerHeight,
                                 child: _buildHeader(scale),
                               ),
-                              Expanded(child: _buildCard(scale)),
+                              _buildCard(scale),
                             ],
                           ),
                         ),
@@ -214,21 +217,25 @@ class _LoginScreenState extends State<LoginScreen>
         children: [
           // Logo mark
           Container(
-            width: 52 * scale,
-            height: 52 * scale,
+            width: 60 * scale,
+            height: 60 * scale,
+            padding: EdgeInsets.all(5 * scale),
             decoration: BoxDecoration(
-              color: context.colors.primary.withOpacity(0.20),
-              borderRadius: BorderRadius.circular(14),
+              // color: context.colors.primary.withOpacity(0.20),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(32),
               border: Border.all(
                 color: context.colors.primary.withOpacity(0.5),
                 width: 1,
               ),
             ),
-            child: Icon(
-              Icons.hub_rounded,
-              color: context.colors.primary,
-              size: 26 * scale,
-            ),
+
+            // child: Icon(
+            //   Icons.hub_rounded,
+            //   color: context.colors.primary,
+            //   size: 26 * scale,
+            // ),
+            child: Image.asset(AppImages.logo, scale: scale),
           ),
           SizedBox(height: 18 * scale),
           Text(
@@ -241,23 +248,28 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
           SizedBox(height: 8 * scale),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _dash(),
-              const SizedBox(width: 10),
-              Text(
-                'PROFESSIONAL NETWORK',
-                style: TextStyle(
-                  fontSize: 9 * scale,
-                  color: _N.textSecondary,
-                  letterSpacing: 4,
-                  fontWeight: FontWeight.w500,
-                ),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _dash(),
+                  const SizedBox(width: 8),
+                  Text(
+                    'PROFESSIONAL NETWORK',
+                    style: TextStyle(
+                      fontSize: 9 * scale,
+                      color: _N.textSecondary,
+                      letterSpacing: 3,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _dash(),
+                ],
               ),
-              const SizedBox(width: 10),
-              _dash(),
-            ],
+            ),
           ),
         ],
       ),

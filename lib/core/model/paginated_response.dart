@@ -1,5 +1,6 @@
 class PaginatedResponse<T> {
   final bool success;
+  final String message;
   final int page;
   final int limit;
   final int totalItems;
@@ -9,6 +10,7 @@ class PaginatedResponse<T> {
 
   PaginatedResponse({
     required this.success,
+    required this.message,
     required this.page,
     required this.limit,
     required this.totalItems,

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:synqer_io/app_export.dart';
 import 'package:synqer_io/core/model/paginated_response.dart';
 import 'package:synqer_io/features/live_conversions/model/live_conversions_model.dart';
@@ -24,10 +23,13 @@ class ConversionsRepo {
       },
     );
 
-    bool hasMore = (res['page'] * res['limit']) < res['totalUsers'];
+    // bool hasMore = (res['page'] * res['limit']) < res['totalUsers'];
+    bool hasMore =
+        ((res['page'] ?? 1) * (res['limit'] ?? 0)) < (res['totalUsers'] ?? 0);
 
     return PaginatedResponse<ConversionsChatData>(
-      success: res['success'],
+      success: res['success'] ?? false,
+      message: res['message'] ?? '',
       page: res['page'],
       limit: res['limit'],
       totalItems: res['totalUsers'],

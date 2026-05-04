@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -6,9 +8,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/features/dashboard/widgets/header_section.dart';
 import 'package:synqer_io/features/live_conversions/bloc/live_convertsions_bloc.dart';
 import 'package:synqer_io/features/live_conversions/model/live_conversions_model.dart';
 import 'package:synqer_io/features/live_conversions/widgets/conversions_card_tile.dart';
+import 'package:synqer_io/features/single_conversion/single_conversions_screen.dart';
 
 class LiveConversionsScreen extends StatelessWidget {
   const LiveConversionsScreen({super.key});
@@ -42,6 +46,7 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
 
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
+  final ScrollController _scrollController = ScrollController();
 
   Timer? _debounce;
   Timer? _timeUpdateTimer;
@@ -55,6 +60,36 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
     super.initState();
     _updateCurrentTime();
     _startTimeUpdater();
+
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+
+    if (currentScroll >= (maxScroll - 200)) {
+      final state = context.read<LiveConvertsionsBloc>().state;
+
+      if (state is LiveConvertsionsLoaded &&
+          state.hasMore &&
+          !state.isLoadingMore) {
+        final nextPage = state.currentPage + 1;
+
+        context.read<LiveConvertsionsBloc>().add(
+          LoadMoreLiveConvertionsEvent(
+            limit: _pageSize,
+            page: nextPage.toString(),
+            searchValue: _queryNotifier.value.isEmpty
+                ? null
+                : _queryNotifier.value,
+            isUnread: _onlyUnreadNotifier.value ? 'true' : 'false',
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -66,6 +101,7 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
     _queryNotifier.dispose();
     _onlyUnreadNotifier.dispose();
     _currentTimeNotifier.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -130,8 +166,18 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
   }
 
   void _onTileTap(ConversionsChatData chat) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Open chat with ${chat.customerName ?? "--"}')),
+    // ScaffoldMessenger.of(context).showSnackBar(
+    //   SnackBar(content: Text('Open chat with ${chat.customerName ?? "--"}')),
+    // );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SingleConversionsBlocProviderWrapper(
+          customerNumber: chat.customerMobile.toString(),
+          customerName: chat.customerName ?? '',
+        ),
+      ),
     );
   }
 
@@ -144,11 +190,13 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
         ValueListenableBuilder<String>(
           valueListenable: _currentTimeNotifier,
           builder: (context, currentTime, _) {
-            return _ConversionsHeader(
-              title: 'Live Conversations',
-              subtitle: 'Recent customer activity',
-              currentTime: currentTime,
-            );
+            // return _ConversionsHeader(
+            //   title: 'Live Conversations',
+            //   subtitle: 'Recent customer activity',
+            //   currentTime: currentTime,
+            // );
+
+            return HeaderSection(title: 'Live Conversations', subtitle: '');
           },
         ),
 
@@ -236,12 +284,24 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
                         color: c.primary,
                         backgroundColor: c.surface,
                         child: ListView.builder(
+                          controller: _scrollController,
                           physics: const AlwaysScrollableScrollPhysics(
                             parent: BouncingScrollPhysics(),
                           ),
                           padding: const EdgeInsets.only(bottom: 100),
-                          itemCount: conversions.length,
+                          itemCount: state.isLoadingMore
+                              ? conversions.length + 1
+                              : conversions.length,
                           itemBuilder: (_, i) {
+                            if (i >= conversions.length) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            }
+
                             final chat = conversions[i];
 
                             return ConversionsCardTile(
@@ -442,7 +502,7 @@ class _FilterTab extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
           color: selected ? c.primary : c.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(35),
           border: Border.all(color: selected ? c.primary : c.border),
         ),
         child: Text(

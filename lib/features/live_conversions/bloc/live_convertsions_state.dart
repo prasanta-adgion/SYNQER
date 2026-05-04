@@ -13,11 +13,33 @@ class LiveConvertsionsLoading extends LiveConvertsionsState {}
 
 class LiveConvertsionsLoaded extends LiveConvertsionsState {
   final List<ConversionsChatData> conversions;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final int currentPage;
 
-  const LiveConvertsionsLoaded({required this.conversions});
+  const LiveConvertsionsLoaded({
+    required this.conversions,
+    required this.hasMore,
+    required this.currentPage,
+    this.isLoadingMore = false,
+  });
+
+  LiveConvertsionsLoaded copyWith({
+    List<ConversionsChatData>? conversions,
+    bool? hasMore,
+    bool? isLoadingMore,
+    int? currentPage,
+  }) {
+    return LiveConvertsionsLoaded(
+      conversions: conversions ?? this.conversions,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      currentPage: currentPage ?? this.currentPage,
+    );
+  }
 
   @override
-  List<Object> get props => [conversions];
+  List<Object> get props => [conversions, hasMore, isLoadingMore, currentPage];
 }
 
 class LiveConvertsionsError extends LiveConvertsionsState {

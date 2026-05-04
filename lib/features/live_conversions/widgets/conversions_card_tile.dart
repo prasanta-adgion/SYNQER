@@ -178,13 +178,6 @@ class ConversionsCardTile extends StatelessWidget {
       ),
     );
   }
-
-  /// Show time if available, else fall back to date.
-  String _displayTimestamp(ConversionsChatData chat) {
-    if (chat.time.isNotEmpty) return chat.time;
-    if (chat.date.isNotEmpty) return chat.date;
-    return '';
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

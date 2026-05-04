@@ -1,6 +1,5 @@
 // lib/core/theme/theme_controller.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -28,12 +27,6 @@ enum AppThemeMode {
   };
 }
 
-/// Owns the user's theme preference and persists it.
-///
-/// Exposed via [ThemeScope] (an InheritedNotifier) so widgets can:
-///   - read the current mode:        `ThemeScope.of(context).mode`
-///   - toggle / change mode:         `ThemeScope.of(context).setMode(...)`
-///   - get resolved colors anywhere: `context.colors`
 class ThemeController extends ChangeNotifier {
   static const _prefsKey = 'app_theme_mode_v1';
 

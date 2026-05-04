@@ -4,7 +4,6 @@ import 'package:synqer_io/core/token_storage.dart';
 import 'package:synqer_io/core/theme/theme_controller.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/features/splash_screen.dart';
-import 'package:synqer_io/features/user_login/login.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
