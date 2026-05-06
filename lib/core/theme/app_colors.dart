@@ -30,6 +30,15 @@ class AppColors {
   final Color bottomSheet;
   final Color bottomSheetHandle;
 
+  // ─── TextField
+  final Color inputFill;
+  final Color inputText;
+  final Color inputHint;
+  final Color inputBorder;
+  final Color inputBorderFocus;
+  final Color inputIcon;
+  final Color inputIconFocus;
+
   const AppColors({
     required this.primary,
     required this.secondary,
@@ -49,12 +58,22 @@ class AppColors {
     required this.dropdownDivider,
     required this.bottomSheet,
     required this.bottomSheetHandle,
+
+    // TextField
+    required this.inputFill,
+    required this.inputText,
+    required this.inputHint,
+    required this.inputBorder,
+    required this.inputBorderFocus,
+    required this.inputIcon,
+    required this.inputIconFocus,
   });
 
-  // ─── Dark theme ───────────────────────────────────────────────────────────
+  // ─── Dark Theme ─────────────────────────────────────────────
   static final AppColors dark = AppColors(
     primary: const Color(0xFF301BF3),
     secondary: const Color(0xFF5E4AE5),
+
     green: const Color(0xFF27AE60),
     error: Colors.redAccent,
     info: const Color(0xFF413D81),
@@ -72,19 +91,27 @@ class AppColors {
 
     onBrand: Colors.white,
 
-    // Slightly lighter than surface so menus visually float above content
     dropdown: const Color(0xFF1C1C1E),
     dropdownDivider: Colors.white.withOpacity(0.07),
 
-    // Matches surfaceHigh — sits one step above surface in the z-stack
     bottomSheet: const Color(0xFF141414),
     bottomSheetHandle: Colors.white.withOpacity(0.18),
+
+    // ─── TextField
+    inputFill: const Color(0xFF141414),
+    inputText: const Color(0xFFEFF3FF),
+    inputHint: Colors.white.withOpacity(0.35),
+    inputBorder: Colors.white.withOpacity(0.08),
+    inputBorderFocus: const Color(0xFF301BF3),
+    inputIcon: Colors.white.withOpacity(0.45),
+    inputIconFocus: const Color(0xFF301BF3),
   );
 
-  // ─── Light theme ──────────────────────────────────────────────────────────
+  // ─── Light Theme ────────────────────────────────────────────
   static final AppColors light = AppColors(
     primary: const Color(0xFF301BF3),
     secondary: const Color(0xFF5E4AE5),
+
     green: const Color(0xFF1F8F4D),
     error: const Color(0xFFE53935),
     info: const Color(0xFF413D81),
@@ -102,12 +129,19 @@ class AppColors {
 
     onBrand: Colors.white,
 
-    // Pure white so dropdown floats above the off-white bg
     dropdown: const Color(0xFFFFFFFF),
     dropdownDivider: Colors.black.withOpacity(0.06),
 
-    // Pure white bottom sheet over the #FAFAFA scaffold
     bottomSheet: const Color(0xFFFFFFFF),
     bottomSheetHandle: Colors.black.withOpacity(0.14),
+
+    // ─── TextField
+    inputFill: const Color(0xFFF7F7F7),
+    inputText: const Color(0xFF0A0A12),
+    inputHint: Colors.black.withOpacity(0.35),
+    inputBorder: Colors.black.withOpacity(0.08),
+    inputBorderFocus: const Color(0xFF301BF3),
+    inputIcon: Colors.black.withOpacity(0.45),
+    inputIconFocus: const Color(0xFF301BF3),
   );
 }

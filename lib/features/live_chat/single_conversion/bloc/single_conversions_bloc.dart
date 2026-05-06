@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:synqer_io/features/single_conversion/model/single_conversion_model.dart';
-import 'package:synqer_io/features/single_conversion/repository/single_conversion_repo.dart';
+import 'package:synqer_io/features/live_chat/single_conversion/model/single_conversion_model.dart';
+import 'package:synqer_io/features/live_chat/single_conversion/repository/single_conversion_repo.dart';
 
 part 'single_conversions_event.dart';
 part 'single_conversions_state.dart';

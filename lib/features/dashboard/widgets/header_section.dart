@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:synqer_io/core/theme/theme_picker_sheet.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/features/profile/profile_screen.dart';
 
 class HeaderSection extends StatelessWidget {
   final String title;
@@ -51,25 +52,33 @@ class HeaderSection extends StatelessWidget {
           const SizedBox(width: 10),
           const _IconBtn(icon: Icons.notifications_none_rounded, badge: true),
           const SizedBox(width: 10),
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [c.primary, c.secondary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ProfileScreen()),
+              );
+            },
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [c.primary, c.secondary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(color: c.border, width: 2),
               ),
-              border: Border.all(color: c.border, width: 2),
-            ),
-            child: Center(
-              child: Text(
-                'R',
-                style: TextStyle(
-                  color: c.onBrand,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
+              child: Center(
+                child: Text(
+                  'R',
+                  style: TextStyle(
+                    color: c.onBrand,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
                 ),
               ),
             ),

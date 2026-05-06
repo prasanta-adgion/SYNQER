@@ -1,7 +1,7 @@
 import 'package:synqer_io/core/constants/apis_end_points.dart';
 import 'package:synqer_io/core/model/paginated_response.dart';
 import 'package:synqer_io/core/network/dio_methods_service.dart';
-import 'package:synqer_io/features/single_conversion/save_contact/model/groups_model.dart';
+import 'package:synqer_io/features/live_chat/save_contact/model/groups_model.dart';
 
 class GetGroupsRepo {
   final DioMethodsService dio;
@@ -35,5 +35,19 @@ class GetGroupsRepo {
       totalPages: res['totalPages'],
       hasMore: hasMore,
     );
+  }
+
+  Future<dynamic> addContact({
+    required String fullName,
+    required String groupName,
+    required String phone,
+  }) async {
+    final responseData = await dio.post(APIsEndPoints.addContacts, {
+      "fullName": fullName.toString().trim(),
+      "groupName": groupName.toString().trim(),
+      "mobileNumber": phone,
+    });
+
+    return responseData;
   }
 }

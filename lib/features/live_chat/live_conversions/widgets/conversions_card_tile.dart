@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
 import 'package:synqer_io/core/theme/theme_scope.dart';
-import 'package:synqer_io/features/live_conversions/model/live_conversions_model.dart';
+import 'package:synqer_io/features/live_chat/live_conversions/model/live_conversions_model.dart';
 
 class ConversionsCardTile extends StatelessWidget {
   final ConversionsChatData chat;

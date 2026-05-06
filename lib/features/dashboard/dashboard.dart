@@ -6,10 +6,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:synqer_io/core/theme/app_colors.dart';
-import 'package:synqer_io/core/theme/theme_picker_sheet.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/features/dashboard/widgets/header_section.dart';
-import 'package:synqer_io/features/live_conversions/live_convertsions_screen.dart';
+import 'package:synqer_io/features/live_chat/live_conversions/live_convertsions_screen.dart';
 
 class ActivityItem {
   final String title;

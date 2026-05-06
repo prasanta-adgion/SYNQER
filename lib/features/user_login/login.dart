@@ -323,7 +323,7 @@ class _LoginScreenState extends State<LoginScreen>
               hint_text: 'you@company.com',
               fieldIcon: Icons.mail_outline_rounded,
               keyboardType: TextInputType.emailAddress,
-              themeMode: TextFieldTheme.dark,
+              // themeMode: TextFieldTheme.dark,
               validator: (v) {
                 if (v == null || v.isEmpty) return "Email is required";
                 if (!v.contains("@")) return "Enter a valid email";
@@ -344,7 +344,7 @@ class _LoginScreenState extends State<LoginScreen>
                 fieldIcon: Icons.lock_outline_rounded,
                 isPassword: true,
                 obscureText: obscure,
-                themeMode: TextFieldTheme.dark,
+                // themeMode: TextFieldTheme.dark,
                 validator: (v) =>
                     v == null || v.length < 6 ? "Minimum 6 characters" : null,
                 suffixIcon: GestureDetector(

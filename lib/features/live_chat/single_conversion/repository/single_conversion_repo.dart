@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:synqer_io/core/constants/apis_end_points.dart';
 import 'package:synqer_io/core/model/paginated_response.dart';
 import 'package:synqer_io/core/network/dio_methods_service.dart';
-import 'package:synqer_io/features/single_conversion/model/single_conversion_model.dart';
+import 'package:synqer_io/features/live_chat/single_conversion/model/single_conversion_model.dart';
 
 class SingleConversionRepo {
   final DioMethodsService dio;

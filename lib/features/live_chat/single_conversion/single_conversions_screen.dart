@@ -7,9 +7,9 @@ import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/utils/app_images.dart';
 import 'package:synqer_io/core/widgets/app_snackbar.dart';
 import 'package:synqer_io/core/widgets/loading_screen.dart';
-import 'package:synqer_io/features/single_conversion/bloc/single_conversions_bloc.dart';
-import 'package:synqer_io/features/single_conversion/model/single_conversion_model.dart';
-import 'package:synqer_io/features/single_conversion/widgets/chat_appbar.dart';
+import 'package:synqer_io/features/live_chat/single_conversion/bloc/single_conversions_bloc.dart';
+import 'package:synqer_io/features/live_chat/single_conversion/model/single_conversion_model.dart';
+import 'package:synqer_io/features/live_chat/single_conversion/widgets/chat_appbar.dart';
 
 class SingleConversionsBlocProviderWrapper extends StatelessWidget {
   final String customerNumber, customerName;
@@ -112,20 +112,36 @@ class _SingleChatState extends State<SingleChat> {
 
     final bloc = context.read<SingleConversionsBloc>();
 
-    // Save before clear
+    // Save before clearing
     final sendingText = text;
 
-    // INSTANT UI UPDATE
+    // ───── Local Temporary Message ─────
     final localMessage = SingleConversionModel(
+      tempId: DateTime.now().millisecondsSinceEpoch.toString(),
+
       message: sendingText,
+
       direction: "outbound",
+
+      isLocal: true,
+
+      isFailed: false,
+
+      status: MessageStatus.sent,
+
+      messageType: MessageType.text,
+
       createDate: DateTime.now().toString().split(' ')[0],
+
       createTime: "${TimeOfDay.now().hour}:${TimeOfDay.now().minute}",
+
       isRead: false,
     );
 
+    // INSTANT UI UPDATE
     bloc.addLocalMessage(localMessage);
 
+    // Clear input
     _msgController.clear();
 
     // Scroll to latest message
@@ -151,30 +167,53 @@ class _SingleChatState extends State<SingleChat> {
 
       if (!mounted) return;
 
+      // ───── SUCCESS ─────
       if (response['success'] == true) {
-        // SILENT BACKGROUND REFRESH
+        // Remove temporary local message
+        //  bloc.removeLocalMessage(localMessage.tempId!);
+
+        // Refresh latest messages silently
         bloc.add(
           SilentRefreshSingleConversionsEvent(
             customerMobile: widget.customerNumber,
             limit: 50,
           ),
         );
-      } else {
+      }
+      // ───── FAILED RESPONSE ─────
+      else {
+        // Mark local message as failed
+        // bloc.markMessageAsFailed(
+        //   localMessage.tempId!,
+        // );
+
+        debugPrint("Error in send message: ${response['message']}");
+
         AppSnackbar.show(
           context,
-          message: 'Failed to send message',
+          message: response['message'] ?? 'Failed to send message',
           type: SnackbarType.error,
         );
       }
-    } catch (e) {
+    }
+    // ───── EXCEPTION ─────
+    catch (e) {
+      // bloc.markMessageAsFailed(
+      //   localMessage.tempId!,
+      // );
+
       if (!mounted) return;
+
+      debugPrint("Send message error: $e");
 
       AppSnackbar.show(
         context,
         message: 'Error in sending message',
         type: SnackbarType.error,
       );
-    } finally {
+    }
+    // ───── FINALLY ─────
+    finally {
       _isSending.value = false;
     }
   }
@@ -442,12 +481,26 @@ class ChatBubble extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Text(
+                  //   chat.message ?? '',
+                  //   style: TextStyle(
+                  //     fontSize: 15,
+                  //     color: c.textPrimary,
+                  //     height: 1.4,
+                  //   ),
+                  // ),
                   Text(
                     chat.message ?? '',
                     style: TextStyle(
                       fontSize: 15,
-                      color: c.textPrimary,
+
+                      color: chat.isFailed ? c.error : c.textPrimary,
+
                       height: 1.4,
+
+                      decoration: chat.isFailed
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -462,12 +515,53 @@ class ChatBubble extends StatelessWidget {
                       if (isUser) ...[
                         const SizedBox(width: 4),
 
-                        Icon(
-                          (chat.isRead ?? false) ? Icons.done_all : Icons.done,
-                          size: 16,
-                          color: (chat.isRead ?? false) ? c.green : c.textMuted,
+                        Builder(
+                          builder: (_) {
+                            if (chat.isFailed) {
+                              return Icon(
+                                Icons.error_outline,
+                                size: 16,
+                                color: c.error,
+                              );
+                            }
+
+                            if (chat.isLocal) {
+                              return SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.5,
+                                  color: c.textMuted,
+                                ),
+                              );
+                            }
+
+                            return Icon(
+                              chat.status == MessageStatus.read
+                                  ? Icons.done_all
+                                  : Icons.done,
+                              size: 16,
+                              color: chat.status == MessageStatus.read
+                                  ? c.green
+                                  : c.textMuted,
+                            );
+                          },
                         ),
                       ],
+
+                      // if (isUser) ...[
+                      //   const SizedBox(width: 4),
+
+                      //   Icon(
+                      //     chat.status == MessageStatus.read
+                      //         ? Icons.done_all
+                      //         : Icons.done,
+                      //     size: 16,
+                      //     color: chat.status == MessageStatus.read
+                      //         ? c.green
+                      //         : c.textMuted,
+                      //   ),
+                      // ],
                     ],
                   ),
                 ],
@@ -496,7 +590,6 @@ class DateSeparator extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
           color: c.surfaceHigh,
-          //   borderRadius: BorderRadius.circular(8),
           border: Border.all(color: c.border, width: 1),
         ),
         child: Text(

@@ -1,6 +1,6 @@
 import 'package:synqer_io/app_export.dart';
 import 'package:synqer_io/core/model/paginated_response.dart';
-import 'package:synqer_io/features/live_conversions/model/live_conversions_model.dart';
+import 'package:synqer_io/features/live_chat/live_conversions/model/live_conversions_model.dart';
 
 class ConversionsRepo {
   final DioMethodsService dio;

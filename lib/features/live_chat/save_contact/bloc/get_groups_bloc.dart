@@ -1,7 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:synqer_io/features/single_conversion/save_contact/model/groups_model.dart';
-import 'package:synqer_io/features/single_conversion/save_contact/repository/get_groups_repo.dart';
+import 'package:synqer_io/features/live_chat/save_contact/model/groups_model.dart';
+import 'package:synqer_io/features/live_chat/save_contact/repository/get_groups_repo.dart';
 
 part 'get_groups_event.dart';
 part 'get_groups_state.dart';
@@ -33,7 +33,7 @@ class GetGroupsBloc extends Bloc<GetGroupsEvent, GetGroupsState> {
             groups: res.data,
             hasMore: res.hasMore,
             isLoadingMore: false,
-            currentPage: res.page ?? 1,
+            currentPage: res.page,
             search: event.search,
           ),
         );
@@ -72,7 +72,7 @@ class GetGroupsBloc extends Bloc<GetGroupsEvent, GetGroupsState> {
             groups: [...currentState.groups, ...res.data],
             hasMore: res.hasMore,
             isLoadingMore: false,
-            currentPage: res.page ?? currentState.currentPage,
+            currentPage: res.page,
           ),
         );
       } else {

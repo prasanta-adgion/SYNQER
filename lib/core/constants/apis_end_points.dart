@@ -11,4 +11,8 @@ class APIsEndPoints {
   static const String sendMessage = "user/api/v1/whatsapp/conversation/send";
 
   static const String getGroups = "user/api/v1/contacts/groups";
+
+  static const String addContacts = "user/api/v1/add-contacts";
+
+  static const String getProfile = "user/api/v1/profile";
 }

@@ -9,10 +9,10 @@ import 'package:intl/intl.dart';
 import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/features/dashboard/widgets/header_section.dart';
-import 'package:synqer_io/features/live_conversions/bloc/live_convertsions_bloc.dart';
-import 'package:synqer_io/features/live_conversions/model/live_conversions_model.dart';
-import 'package:synqer_io/features/live_conversions/widgets/conversions_card_tile.dart';
-import 'package:synqer_io/features/single_conversion/single_conversions_screen.dart';
+import 'package:synqer_io/features/live_chat/live_conversions/bloc/live_convertsions_bloc.dart';
+import 'package:synqer_io/features/live_chat/live_conversions/model/live_conversions_model.dart';
+import 'package:synqer_io/features/live_chat/live_conversions/widgets/conversions_card_tile.dart';
+import 'package:synqer_io/features/live_chat/single_conversion/single_conversions_screen.dart';
 
 class LiveConversionsScreen extends StatelessWidget {
   const LiveConversionsScreen({super.key});
