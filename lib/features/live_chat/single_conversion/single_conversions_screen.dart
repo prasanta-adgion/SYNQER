@@ -57,8 +57,8 @@ class SingleChat extends StatefulWidget {
 class _SingleChatState extends State<SingleChat> {
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<bool> _isSending = ValueNotifier(false);
   bool _initialized = false;
+  int _lastSendFailureId = 0;
 
   @override
   void initState() {
@@ -92,7 +92,6 @@ class _SingleChatState extends State<SingleChat> {
     context.read<SingleConversionsBloc>().add(
       LoadMoreSingleConversionsEvent(
         customerMobile: widget.customerNumber,
-        // page: state.currentPage - 1,
         limit: 50,
       ),
     );
@@ -110,41 +109,16 @@ class _SingleChatState extends State<SingleChat> {
 
     if (text.isEmpty) return;
 
-    final bloc = context.read<SingleConversionsBloc>();
-
-    // Save before clearing
-    final sendingText = text;
-
-    // ───── Local Temporary Message ─────
-    final localMessage = SingleConversionModel(
-      tempId: DateTime.now().millisecondsSinceEpoch.toString(),
-
-      message: sendingText,
-
-      direction: "outbound",
-
-      isLocal: true,
-
-      isFailed: false,
-
-      status: MessageStatus.sent,
-
-      messageType: MessageType.text,
-
-      createDate: DateTime.now().toString().split(' ')[0],
-
-      createTime: "${TimeOfDay.now().hour}:${TimeOfDay.now().minute}",
-
-      isRead: false,
-    );
-
-    // INSTANT UI UPDATE
-    bloc.addLocalMessage(localMessage);
-
-    // Clear input
     _msgController.clear();
 
-    // Scroll to latest message
+    context.read<SingleConversionsBloc>().add(
+      SendSingleMessageEvent(
+        customerMobile: widget.customerNumber,
+        message: text,
+        messageType: messageType,
+      ),
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -154,68 +128,6 @@ class _SingleChatState extends State<SingleChat> {
         );
       }
     });
-
-    try {
-      _isSending.value = true;
-
-      final response = await AppInjector.singleConversionHistoryRepo
-          .sendMessage(
-            customerMobile: widget.customerNumber,
-            message: sendingText,
-            messageType: messageType,
-          );
-
-      if (!mounted) return;
-
-      // ───── SUCCESS ─────
-      if (response['success'] == true) {
-        // Remove temporary local message
-        //  bloc.removeLocalMessage(localMessage.tempId!);
-
-        // Refresh latest messages silently
-        bloc.add(
-          SilentRefreshSingleConversionsEvent(
-            customerMobile: widget.customerNumber,
-            limit: 50,
-          ),
-        );
-      }
-      // ───── FAILED RESPONSE ─────
-      else {
-        // Mark local message as failed
-        // bloc.markMessageAsFailed(
-        //   localMessage.tempId!,
-        // );
-
-        debugPrint("Error in send message: ${response['message']}");
-
-        AppSnackbar.show(
-          context,
-          message: response['message'] ?? 'Failed to send message',
-          type: SnackbarType.error,
-        );
-      }
-    }
-    // ───── EXCEPTION ─────
-    catch (e) {
-      // bloc.markMessageAsFailed(
-      //   localMessage.tempId!,
-      // );
-
-      if (!mounted) return;
-
-      debugPrint("Send message error: $e");
-
-      AppSnackbar.show(
-        context,
-        message: 'Error in sending message',
-        type: SnackbarType.error,
-      );
-    }
-    // ───── FINALLY ─────
-    finally {
-      _isSending.value = false;
-    }
   }
 
   @override
@@ -258,6 +170,18 @@ class _SingleChatState extends State<SingleChat> {
                           _scrollController.jumpTo(0);
                         }
                       });
+                    }
+
+                    if (state is SingleConversionsLoaded &&
+                        state.sendFailureMessage != null &&
+                        state.sendFailureId != _lastSendFailureId) {
+                      _lastSendFailureId = state.sendFailureId;
+
+                      AppSnackbar.show(
+                        context,
+                        message: state.sendFailureMessage!,
+                        type: SnackbarType.error,
+                      );
                     }
 
                     if (state is SingleConversionsError) {
@@ -424,7 +348,6 @@ class _SingleChatState extends State<SingleChat> {
                     child: MessageInputBar(
                       controller: _msgController,
                       onSend: () => sendMessage('text'),
-                      isSending: _isSending,
                     ),
                   ),
                 ),
@@ -481,14 +404,6 @@ class ChatBubble extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Text(
-                  //   chat.message ?? '',
-                  //   style: TextStyle(
-                  //     fontSize: 15,
-                  //     color: c.textPrimary,
-                  //     height: 1.4,
-                  //   ),
-                  // ),
                   Text(
                     chat.message ?? '',
                     style: TextStyle(
@@ -548,20 +463,6 @@ class ChatBubble extends StatelessWidget {
                           },
                         ),
                       ],
-
-                      // if (isUser) ...[
-                      //   const SizedBox(width: 4),
-
-                      //   Icon(
-                      //     chat.status == MessageStatus.read
-                      //         ? Icons.done_all
-                      //         : Icons.done,
-                      //     size: 16,
-                      //     color: chat.status == MessageStatus.read
-                      //         ? c.green
-                      //         : c.textMuted,
-                      //   ),
-                      // ],
                     ],
                   ),
                 ],
@@ -609,13 +510,11 @@ class DateSeparator extends StatelessWidget {
 class MessageInputBar extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
-  final ValueNotifier<bool> isSending;
 
   const MessageInputBar({
     super.key,
     required this.controller,
     required this.onSend,
-    required this.isSending,
   });
 
   @override
@@ -658,34 +557,18 @@ class MessageInputBar extends StatelessWidget {
 
         const SizedBox(width: 8),
 
-        ValueListenableBuilder<bool>(
-          valueListenable: isSending,
-          builder: (context, value, child) {
-            return Material(
-              color: c.green,
-              borderRadius: BorderRadius.circular(30),
-              child: InkWell(
-                onTap: value ? null : onSend,
-                borderRadius: BorderRadius.circular(30),
-                child: SizedBox(
-                  width: 50,
-                  height: 50,
-                  child: Center(
-                    child: value
-                        ? SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: c.onBrand,
-                            ),
-                          )
-                        : Icon(Icons.send, color: c.onBrand),
-                  ),
-                ),
-              ),
-            );
-          },
+        Material(
+          color: c.green,
+          borderRadius: BorderRadius.circular(30),
+          child: InkWell(
+            onTap: onSend,
+            borderRadius: BorderRadius.circular(30),
+            child: SizedBox(
+              width: 50,
+              height: 50,
+              child: Center(child: Icon(Icons.send, color: c.onBrand)),
+            ),
+          ),
         ),
       ],
     );
