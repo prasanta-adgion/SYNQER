@@ -2,9 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:popover/popover.dart';
 import 'package:synqer_io/app_export.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/core/widgets/app_popover_dailog.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/bloc/single_conversions_bloc.dart';
 import 'package:synqer_io/features/live_chat/save_contact/save_contact_screen.dart';
 
@@ -132,184 +132,59 @@ Widget _buildMoreOptions(BuildContext context, String number, AppColors c) {
     builder: (buttonContext) => IconButton(
       icon: Icon(Icons.more_vert, color: c.onBrand),
       onPressed: () {
-        showPopover(
-          context: buttonContext,
-          direction: PopoverDirection.bottom,
-          width: 190,
-          arrowHeight: 10,
-          arrowWidth: 10,
-          backgroundColor: Colors.transparent,
-          radius: 5,
-          barrierColor: Colors.black26,
+        AppPopoverMenu.show(
+          context: context,
 
-          bodyBuilder: (popoverContext) {
-            return Container(
-              decoration: BoxDecoration(
-                color: c.surfaceHigh,
-                borderRadius: BorderRadius.circular(5),
+          buttonContext: buttonContext,
 
-                // Border
-                border: Border.all(color: c.border, width: 1),
+          items: [
+            AppPopoverItem(
+              title: 'Add Contact',
 
-                // Shadow
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.12),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
+              icon: Icons.person_add_alt_1,
+
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: c.bottomSheet,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                   ),
-                ],
-              ),
+                  builder: (_) {
+                    return SaveContact(customerNumber: number);
+                  },
+                );
+              },
+            ),
 
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
+            AppPopoverItem(
+              title: 'Call',
 
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    /// ADD CONTACT
-                    InkWell(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(5),
-                      ),
-                      onTap: () {
-                        Navigator.pop(popoverContext);
+              icon: Icons.call,
 
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: c.bottomSheet,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
-                          ),
-                          builder: (context) {
-                            return SaveContact(customerNumber: number);
-                          },
-                        );
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.person_add_alt_1,
-                              size: 20,
-                              color: c.green,
-                            ),
+              onTap: () {
+                debugPrint("Call: $number");
+              },
+            ),
 
-                            const SizedBox(width: 12),
+            AppPopoverItem(
+              title: 'Refresh Chat',
 
-                            Expanded(
-                              child: Text(
-                                'Add Contact',
-                                style: TextStyle(
-                                  color: c.textPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+              icon: Icons.refresh,
 
-                    Divider(
-                      height: 1,
-                      thickness: 0.6,
-                      color: c.dropdownDivider,
-                    ),
-
-                    /// CALL
-                    InkWell(
-                      onTap: () {
-                        Navigator.pop(popoverContext);
-
-                        debugPrint("Call: $number");
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.call, size: 20, color: c.green),
-
-                            const SizedBox(width: 12),
-
-                            Expanded(
-                              child: Text(
-                                'Call',
-                                style: TextStyle(
-                                  color: c.textPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    Divider(
-                      height: 1,
-                      thickness: 0.6,
-                      color: c.dropdownDivider,
-                    ),
-
-                    /// REFRESH CHAT
-                    InkWell(
-                      borderRadius: const BorderRadius.vertical(
-                        bottom: Radius.circular(14),
-                      ),
-                      onTap: () {
-                        Navigator.pop(popoverContext);
-
-                        context.read<SingleConversionsBloc>().add(
-                          SilentRefreshSingleConversionsEvent(
-                            customerMobile: number,
-                            limit: 50,
-                          ),
-                        );
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.refresh, size: 20, color: c.green),
-
-                            const SizedBox(width: 12),
-
-                            Expanded(
-                              child: Text(
-                                'Refresh Chat',
-                                style: TextStyle(
-                                  color: c.textPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+              onTap: () {
+                context.read<SingleConversionsBloc>().add(
+                  SilentRefreshSingleConversionsEvent(
+                    customerMobile: number,
+                    limit: 50,
+                  ),
+                );
+              },
+            ),
+          ],
         );
       },
     ),

@@ -46,6 +46,21 @@ class SilentRefreshSingleConversionsEvent extends SingleConversionsEvent {
   List<Object> get props => [customerMobile, limit];
 }
 
+class SendSingleMessageEvent extends SingleConversionsEvent {
+  final String customerMobile;
+  final String message;
+  final String messageType;
+
+  const SendSingleMessageEvent({
+    required this.customerMobile,
+    required this.message,
+    this.messageType = 'text',
+  });
+
+  @override
+  List<Object> get props => [customerMobile, message, messageType];
+}
+
 class MarkMessagesAsReadEvent extends SingleConversionsEvent {
   final String customerMobile;
 

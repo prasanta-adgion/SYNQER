@@ -5,9 +5,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/app_colors.dart';
+import 'package:synqer_io/core/theme/theme_controller.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/core/utils/error_widget.dart';
+import 'package:synqer_io/core/utils/helper_methods.dart';
+import 'package:synqer_io/core/widgets/app_popover_dailog.dart';
 import 'package:synqer_io/features/profile/bloc/profile_bloc.dart';
 import 'package:synqer_io/features/profile/model/user_profile_model.dart';
+import 'package:synqer_io/features/transaction_screen/transaction_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -70,7 +75,8 @@ class _ProfileViewState extends State<_ProfileView>
         body: BlocBuilder<ProfileBloc, ProfileState>(
           builder: (context, state) {
             if (state is ProfileError) {
-              return _ErrorView(
+              return ErrorView(
+                title: 'Unable to load profile',
                 message: state.message,
                 onRetry: () =>
                     context.read<ProfileBloc>().add(const FetchProfileEvent()),
@@ -93,7 +99,7 @@ class _ProfileViewState extends State<_ProfileView>
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 50),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        // const SizedBox(height: 16),
+                        const SizedBox(height: 10),
                         if (state is ProfileLoading || state is ProfileInitial)
                           _LoadingCard(c: c),
                         _buildBalanceSection(c, user),
@@ -134,7 +140,7 @@ class _ProfileViewState extends State<_ProfileView>
   // ── Sliver App Bar ──────────────────────────────────────────────────────────
   Widget _buildAppBar(AppColors c, User? user) {
     return SliverAppBar(
-      expandedHeight: 180,
+      expandedHeight: 140,
       pinned: true,
       backgroundColor: c.bg,
       surfaceTintColor: Colors.transparent,
@@ -142,14 +148,57 @@ class _ProfileViewState extends State<_ProfileView>
         padding: const EdgeInsets.all(8),
         child: _GlassBtn(
           icon: Icons.arrow_back_ios_new_rounded,
-          onTap: () => Navigator.maybePop(context),
+
+          onTap: (buttonContext) => Navigator.maybePop(buttonContext),
+
           c: c,
         ),
       ),
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-          child: _GlassBtn(icon: Icons.more_vert_rounded, onTap: () {}, c: c),
+
+          child: _GlassBtn(
+            icon: Icons.more_vert_rounded,
+
+            onTap: (buttonContext) {
+              AppPopoverMenu.show(
+                context: context,
+
+                buttonContext: buttonContext,
+
+                items: [
+                  AppPopoverItem(
+                    title: 'Transactions',
+
+                    icon: Icons.receipt_long_rounded,
+                    iconColor: c.primary,
+
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TransactionScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  AppPopoverItem(
+                    title: 'Support',
+
+                    icon: Icons.support_agent_rounded,
+                    iconColor: c.primary,
+                    onTap: () {
+                      debugPrint("Support clicked");
+                    },
+                  ),
+                ],
+              );
+            },
+
+            c: c,
+          ),
         ),
       ],
       flexibleSpace: FlexibleSpaceBar(
@@ -164,14 +213,13 @@ class _ProfileViewState extends State<_ProfileView>
     final name = _pick(user?.fullName, user?.userName) ?? '--';
     final email = _pick(user?.email) ?? '--';
     final rawStatus = _pick(user?.status) ?? 'active';
-    final status = rawStatus.toUpperCase();
-    final statusColor = status == 'ACTIVE' ? c.green : const Color(0xFFF59E0B);
+    rawStatus.toUpperCase();
 
     return Container(
       color: c.bg,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 48, 20, 20),
+          padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -188,19 +236,12 @@ class _ProfileViewState extends State<_ProfileView>
                         colors: [c.primary, c.secondary],
                       ),
                       border: Border.all(color: c.borderStrong, width: 2),
-                      // boxShadow: [
-                      //   BoxShadow(
-                      //     color: c.primary.withOpacity(0.35),
-                      //     blurRadius: 20,
-                      //     spreadRadius: 2,
-                      //   ),
-                      // ],
                     ),
                     child: ClipOval(
                       child: _pick(user?.profilePicture) == null
                           ? Center(
                               child: Text(
-                                _initials(name),
+                                AppHelperMethods.initialsNameCharacter(name),
                                 style: TextStyle(
                                   color: c.onBrand,
                                   fontSize: 23,
@@ -213,7 +254,7 @@ class _ProfileViewState extends State<_ProfileView>
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Center(
                                 child: Text(
-                                  _initials(name),
+                                  AppHelperMethods.initialsNameCharacter(name),
                                   style: TextStyle(
                                     color: c.onBrand,
                                     fontSize: 23,
@@ -260,41 +301,11 @@ class _ProfileViewState extends State<_ProfileView>
                             ),
                           ),
                         ],
-                        const SizedBox(height: 8),
-                        AnimatedBuilder(
-                          animation: _pulseCtrl,
-                          builder: (_, __) => _StatusBadge(
-                            label: status,
-                            color: statusColor,
-                            pulse: _pulseCtrl.value,
-                          ),
-                        ),
                       ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              // Wrap(
-              //   spacing: 6,
-              //   runSpacing: 6,
-              //   children: [
-              //     if (_pick(user?.planName) != null)
-              //       _Chip(
-              //         label: user!.planName!.toUpperCase(),
-              //         color: c.primary,
-              //       ),
-              //     if (user?.dltEntity != null)
-              //       _Chip(label: 'DLT VERIFIED', color: c.green),
-              //     if (_pick(user?.country) != null)
-              //       _Chip(
-              //         label: user!.country!.toUpperCase(),
-              //         color: const Color(0xFFF59E0B),
-              //       ),
-              //     if (user?.services?.rcs == true)
-              //       _Chip(label: 'RCS', color: const Color(0xFFF59E0B)),
-              //   ],
-              // ),
             ],
           ),
         ),
@@ -688,7 +699,7 @@ class _ProfileViewState extends State<_ProfileView>
                 child: _InfoTile(
                   label: 'Price',
                   value: user?.planPrice != null
-                      ? '$currency${user!.planPrice}'
+                      ? '$currency${user?.planPrice}'
                       : '--',
                   c: c,
                   bold: true,
@@ -702,9 +713,13 @@ class _ProfileViewState extends State<_ProfileView>
               Expanded(
                 child: _InfoTile(
                   label: 'Panel Expiry',
-                  value: "${user!.expiryDate.toString()}\n${user.expiryTime}",
+                  bold: true,
+                  value: user == null
+                      ? '--'
+                      : "${user.expiryDate?.toString() ?? '--'}\n${user.expiryTime ?? '--'}",
                   c: c,
-                  // valueColor: _expiryColor(c, user.expiryDate),
+                  mono: true,
+
                   valueColor: c.error,
                 ),
               ),
@@ -712,33 +727,33 @@ class _ProfileViewState extends State<_ProfileView>
               Expanded(
                 child: _InfoTile(
                   label: 'AI Credits',
-                  value: user.aiCredits != null ? '${user.aiCredits}' : '--',
+                  value: user?.aiCredits != null ? '${user!.aiCredits}' : '--',
                   c: c,
                   valueColor: const Color(0xFFF59E0B),
                 ),
               ),
             ],
           ),
-          if (_pick(user.userName) != null ||
-              _pick(user.rmlTransUsername) != null) ...[
+          if (_pick(user?.userName) != null ||
+              _pick(user?.rmlTransUsername) != null) ...[
             const SizedBox(height: 12),
             Row(
               children: [
-                if (_pick(user.userName) != null)
+                if (_pick(user?.userName) != null)
                   Expanded(
                     child: _InfoTile(
                       label: 'Username',
-                      value: user.userName!,
+                      value: user!.userName!,
                       c: c,
                       mono: true,
                     ),
                   ),
-                if (_pick(user.rmlTransUsername) != null) ...[
+                if (_pick(user?.rmlTransUsername) != null) ...[
                   const SizedBox(width: 12),
                   Expanded(
                     child: _InfoTile(
                       label: 'RML Trans.',
-                      value: user.rmlTransUsername!,
+                      value: user!.rmlTransUsername!,
                       c: c,
                       mono: true,
                     ),
@@ -778,6 +793,7 @@ class _ProfileViewState extends State<_ProfileView>
               label: 'Registered',
               value: dlt.date.toString(),
               c: c,
+              mono: true,
               isLast: true,
             ),
           ],
@@ -846,19 +862,13 @@ class _ProfileViewState extends State<_ProfileView>
             c: c,
           ),
           const SizedBox(height: 12),
-          if (_pick(user?.sId) != null || _pick(user?.id) != null)
-            _CopyableField(
-              label: 'User ID',
-              value: (_pick(user?.id) ?? user!.sId)!,
-              c: c,
-            ),
-          const SizedBox(height: 10),
+
           if (_pick(user?.mobileNumber) != null)
             _RowDetail(
               label: 'Mobile',
               value: user!.mobileNumber!,
               c: c,
-              mono: true,
+              // mono: true,
             ),
           if (_pick(user?.country) != null)
             _RowDetail(label: 'Country', value: user!.country!, c: c),
@@ -869,6 +879,7 @@ class _ProfileViewState extends State<_ProfileView>
               label: 'Joined',
               value: user!.createDate.toString(),
               c: c,
+              mono: true,
             ),
           if (_pick(user?.updatedAt) != null)
             _RowDetail(
@@ -876,6 +887,7 @@ class _ProfileViewState extends State<_ProfileView>
               value: user!.updateDate.toString(),
               c: c,
               isLast: true,
+              mono: true,
             ),
         ],
       ),
@@ -905,24 +917,64 @@ class _ProfileViewState extends State<_ProfileView>
             sub: 'Manage alerts',
             c: c,
           ),
-          _ActionTile(
-            icon: Icons.security_rounded,
-            label: 'Security & 2FA',
-            sub: 'Protect your account',
-            c: c,
+
+          Builder(
+            builder: (context) {
+              final c = context.colors;
+
+              final controller = context.themeController;
+
+              final isDark = context.isDark;
+
+              return _ActionTile(
+                icon: isDark
+                    ? Icons.dark_mode_rounded
+                    : Icons.light_mode_rounded,
+
+                label: isDark ? 'Dark Mode' : 'Light Mode',
+
+                sub: isDark
+                    ? 'Dark appearance enabled'
+                    : 'Light appearance enabled',
+                c: c,
+
+                trailing: Switch.adaptive(
+                  value: isDark,
+                  activeColor: c.primary,
+
+                  onChanged: (value) async {
+                    await controller.setMode(
+                      value ? AppThemeMode.dark : AppThemeMode.light,
+                    );
+                  },
+                ),
+
+                onTap: () async {
+                  await controller.setMode(
+                    isDark ? AppThemeMode.light : AppThemeMode.dark,
+                  );
+                },
+              );
+            },
           ),
+          // _ActionTile(
+          //   icon: Icons.security_rounded,
+          //   label: 'Security & 2FA',
+          //   sub: 'Protect your account',
+          //   c: c,
+          // ),
           _ActionTile(
             icon: Icons.account_balance_wallet_outlined,
             label: 'Billing & Wallet',
             sub: '${_fmtMoney(wallet, currency)} available',
             c: c,
           ),
-          _ActionTile(
-            icon: Icons.api_rounded,
-            label: 'API Keys',
-            sub: 'Manage access keys',
-            c: c,
-          ),
+          // _ActionTile(
+          //   icon: Icons.api_rounded,
+          //   label: 'API Keys',
+          //   sub: 'Manage access keys',
+          //   c: c,
+          // ),
           _ActionTile(
             icon: Icons.logout_rounded,
             label: 'Logout',
@@ -970,17 +1022,6 @@ String? _pick(String? a, [String? b]) {
   final tb = b?.trim();
   if (tb != null && tb.isNotEmpty) return tb;
   return null;
-}
-
-String _initials(String name) {
-  final parts = name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((p) => p.isNotEmpty)
-      .toList();
-  if (parts.isEmpty) return 'U';
-  if (parts.length == 1) return parts.first[0].toUpperCase();
-  return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1622,49 +1663,6 @@ class _LoadingCard extends StatelessWidget {
   );
 }
 
-class _ErrorView extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
-  const _ErrorView({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline_rounded, color: c.error, size: 52),
-            const SizedBox(height: 16),
-            Text(
-              'Unable to load profile',
-              style: TextStyle(
-                color: c.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: c.textSecondary, fontSize: 13),
-            ),
-            const SizedBox(height: 18),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ─── Shared Widgets ───────────────────────────────────────────────────────────
 
 class _Card extends StatelessWidget {
@@ -1686,75 +1684,39 @@ class _Card extends StatelessWidget {
 
 class _GlassBtn extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onTap;
+
+  // FIXED
+  final Function(BuildContext buttonContext) onTap;
+
   final AppColors c;
+
   const _GlassBtn({required this.icon, required this.onTap, required this.c});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: c.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: c.border),
-      ),
-      child: Icon(icon, color: c.textSecondary, size: 17),
-    ),
-  );
-}
+  Widget build(BuildContext context) {
+    return Builder(
+      builder: (buttonContext) {
+        return GestureDetector(
+          onTap: () => onTap(buttonContext),
 
-class _StatusBadge extends StatelessWidget {
-  final String label;
-  final Color color;
-  final double pulse;
-  const _StatusBadge({
-    required this.label,
-    required this.color,
-    required this.pulse,
-  });
+          child: Container(
+            width: 38,
+            height: 38,
 
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.10),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: color.withOpacity(0.25 + 0.10 * pulse)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color,
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.4 + 0.3 * pulse),
-                blurRadius: 6,
-              ),
-            ],
+            decoration: BoxDecoration(
+              color: c.surface,
+
+              borderRadius: BorderRadius.circular(10),
+
+              border: Border.all(color: c.border),
+            ),
+
+            child: Icon(icon, color: c.textSecondary, size: 17),
           ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.12,
-            fontFamily: 'Courier',
-          ),
-        ),
-      ],
-    ),
-  );
+        );
+      },
+    );
+  }
 }
 
 class _InfoTile extends StatelessWidget {
@@ -2035,64 +1997,101 @@ class _ActionTile extends StatelessWidget {
   final IconData icon;
   final String label, sub;
   final AppColors c;
+
   final bool isDestructive;
+
+  // NEW
+  final Widget? trailing;
+
+  // NEW
+  final VoidCallback? onTap;
+
   const _ActionTile({
     required this.icon,
     required this.label,
     required this.sub,
     required this.c,
     this.isDestructive = false,
+
+    this.trailing,
+    this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: () => HapticFeedback.selectionClick(),
-    child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: c.border, width: 0.5)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: isDestructive ? c.error.withOpacity(0.10) : c.surfaceHigh,
-              borderRadius: BorderRadius.circular(9),
-              border: Border.all(color: c.border),
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+
+        onTap?.call();
+      },
+
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: c.border, width: 0.5)),
+        ),
+
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+
+              decoration: BoxDecoration(
+                color: isDestructive
+                    ? c.error.withOpacity(0.10)
+                    : c.surfaceHigh,
+
+                borderRadius: BorderRadius.circular(9),
+
+                border: Border.all(color: c.border),
+              ),
+
+              child: Icon(
+                icon,
+                size: 16,
+                color: isDestructive ? c.error : c.textSecondary,
+              ),
             ),
-            child: Icon(
-              icon,
-              size: 16,
-              color: isDestructive ? c.error : c.textSecondary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: isDestructive ? c.error : c.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+
+                children: [
+                  Text(
+                    label,
+
+                    style: TextStyle(
+                      color: isDestructive ? c.error : c.textPrimary,
+
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                Text(
-                  sub,
-                  style: TextStyle(color: c.textMuted, fontSize: 11),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+
+                  Text(
+                    sub,
+
+                    style: TextStyle(color: c.textMuted, fontSize: 11),
+
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
-          ),
-          Icon(Icons.chevron_right_rounded, color: c.textMuted, size: 18),
-        ],
+
+            // NEW
+            trailing ??
+                Icon(Icons.chevron_right_rounded, color: c.textMuted, size: 18),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

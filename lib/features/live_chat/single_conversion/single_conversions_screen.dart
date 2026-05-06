@@ -1,15 +1,18 @@
 // ignore_for_file: deprecated_member_use
 
+import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/utils/app_images.dart';
 import 'package:synqer_io/core/widgets/app_snackbar.dart';
+import 'package:synqer_io/core/widgets/image_full_preview.dart';
 import 'package:synqer_io/core/widgets/loading_screen.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/bloc/single_conversions_bloc.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/model/single_conversion_model.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/widgets/chat_appbar.dart';
+import 'package:video_player/video_player.dart';
 
 class SingleConversionsBlocProviderWrapper extends StatelessWidget {
   final String customerNumber, customerName;
@@ -404,20 +407,35 @@ class ChatBubble extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    chat.message ?? '',
-                    style: TextStyle(
-                      fontSize: 15,
-
-                      color: chat.isFailed ? c.error : c.textPrimary,
-
-                      height: 1.4,
-
-                      decoration: chat.isFailed
-                          ? TextDecoration.lineThrough
-                          : TextDecoration.none,
+                  switch (chat.messageType) {
+                    MessageType.text => Text(
+                      chat.message ?? '',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: chat.isFailed ? c.error : c.textPrimary,
+                        height: 1.4,
+                        decoration: chat.isFailed
+                            ? TextDecoration.lineThrough
+                            : TextDecoration.none,
+                      ),
                     ),
-                  ),
+                    MessageType.image => InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ImageFullViewerScreen(
+                              imageUrl: chat.mediaUrl.toString(),
+                              title: chat.message.toString(),
+                            ),
+                          ),
+                        );
+                      },
+                      child: ImagePreviewBubble(chat: chat),
+                    ),
+                    MessageType.video => VideoPlayerBubble(chat: chat),
+                    MessageType.document => DocumentBubble(chat: chat),
+                  },
                   const SizedBox(height: 4),
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -473,6 +491,308 @@ class ChatBubble extends StatelessWidget {
       ),
     );
   }
+}
+
+class ImagePreviewBubble extends StatelessWidget {
+  final SingleConversionModel chat;
+
+  const ImagePreviewBubble({super.key, required this.chat});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final mediaUrl = chat.mediaUrl?.trim() ?? '';
+    final caption = chat.message?.trim() ?? '';
+
+    if (mediaUrl.isEmpty) {
+      return _UnavailableMediaLabel(label: 'Image unavailable');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minWidth: 180,
+              maxWidth: 260,
+              maxHeight: 260,
+            ),
+            child: Image.network(
+              mediaUrl,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+
+                return Container(
+                  width: 220,
+                  height: 180,
+                  color: c.surfaceHigh,
+                  alignment: Alignment.center,
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: c.green,
+                    ),
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  width: 220,
+                  height: 160,
+                  color: c.surfaceHigh,
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.broken_image_outlined,
+                    size: 42,
+                    color: c.textMuted,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        if (caption.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            caption,
+            style: TextStyle(fontSize: 14, color: c.textPrimary, height: 1.35),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class VideoPlayerBubble extends StatefulWidget {
+  final SingleConversionModel chat;
+
+  const VideoPlayerBubble({super.key, required this.chat});
+
+  @override
+  State<VideoPlayerBubble> createState() => _VideoPlayerBubbleState();
+}
+
+class _VideoPlayerBubbleState extends State<VideoPlayerBubble> {
+  VideoPlayerController? _videoController;
+  ChewieController? _chewieController;
+  bool _isLoading = false;
+  bool _hasError = false;
+
+  String get _mediaUrl => widget.chat.mediaUrl?.trim() ?? '';
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeVideo();
+  }
+
+  @override
+  void didUpdateWidget(covariant VideoPlayerBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.chat.mediaUrl?.trim() != _mediaUrl) {
+      _disposeControllers();
+      _initializeVideo();
+    }
+  }
+
+  Future<void> _initializeVideo() async {
+    final mediaUrl = _mediaUrl;
+    final uri = Uri.tryParse(mediaUrl);
+
+    if (mediaUrl.isEmpty || uri == null || !uri.hasScheme) {
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
+    try {
+      final videoController = VideoPlayerController.networkUrl(uri);
+
+      await videoController.initialize();
+
+      if (!mounted || _mediaUrl != mediaUrl) {
+        await videoController.dispose();
+        return;
+      }
+
+      final chewieController = ChewieController(
+        videoPlayerController: videoController,
+        autoPlay: false,
+        looping: false,
+        allowFullScreen: true,
+        allowMuting: true,
+        showControls: true,
+        aspectRatio: videoController.value.aspectRatio,
+      );
+
+      setState(() {
+        _videoController = videoController;
+        _chewieController = chewieController;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
+    }
+  }
+
+  void _disposeControllers() {
+    _chewieController?.dispose();
+    _videoController?.dispose();
+    _chewieController = null;
+    _videoController = null;
+  }
+
+  @override
+  void dispose() {
+    _disposeControllers();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final title = _fallbackTitle(widget.chat.message, 'Video');
+
+    if (_hasError) {
+      return _UnavailableMediaLabel(label: 'Video unavailable');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            width: 240,
+            height: 300,
+            child: _isLoading || _chewieController == null
+                ? Container(
+                    color: Colors.black87,
+                    alignment: Alignment.center,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: c.green,
+                    ),
+                  )
+                : Chewie(controller: _chewieController!),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 14,
+            color: c.textPrimary,
+            fontWeight: FontWeight.w600,
+            height: 1.3,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class DocumentBubble extends StatelessWidget {
+  final SingleConversionModel chat;
+  final VoidCallback? onTap;
+
+  const DocumentBubble({super.key, required this.chat, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final title = _fallbackTitle(chat.message, 'Document');
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 250,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: c.surfaceHigh,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: c.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: c.error.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.picture_as_pdf, color: c.error, size: 24),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: c.textPrimary,
+                  fontWeight: FontWeight.w600,
+                  height: 1.3,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.open_in_new, size: 18, color: c.textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UnavailableMediaLabel extends StatelessWidget {
+  final String label;
+
+  const _UnavailableMediaLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.error_outline, size: 18, color: c.textMuted),
+        const SizedBox(width: 6),
+        Text(label, style: TextStyle(fontSize: 14, color: c.textSecondary)),
+      ],
+    );
+  }
+}
+
+String _fallbackTitle(String? value, String fallback) {
+  final title = value?.trim() ?? '';
+
+  return title.isEmpty ? fallback : title;
 }
 
 class DateSeparator extends StatelessWidget {
@@ -550,6 +870,12 @@ class MessageInputBar extends StatelessWidget {
                     ),
                   ),
                 ),
+
+                IconButton(
+                  onPressed: () {},
+                  icon: Icon(Icons.attach_file_rounded),
+                ),
+                const SizedBox(width: 10),
               ],
             ),
           ),
