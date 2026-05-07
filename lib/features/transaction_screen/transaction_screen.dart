@@ -40,7 +40,7 @@ class _TransactionView extends StatefulWidget {
 }
 
 class _TransactionScreenState extends State<_TransactionView> {
-  static const int _pageSize = 20;
+  static const int _pageSize = 15;
   static const double _balanceCardsHeight = 130;
   static const double _scrollHideThreshold = 8; // small dead-zone
 
@@ -52,6 +52,7 @@ class _TransactionScreenState extends State<_TransactionView> {
   String? _fromDate;
   String? _toDate;
   double _lastScrollOffset = 0;
+  int? _requestedLoadMorePage;
 
   @override
   void initState() {
@@ -99,9 +100,14 @@ class _TransactionScreenState extends State<_TransactionView> {
       return;
     }
 
+    final nextPage = state.currentPage + 1;
+    if (_requestedLoadMorePage == nextPage) return;
+
+    _requestedLoadMorePage = nextPage;
+
     context.read<TransactionGetBloc>().add(
       LoadMoreTransactionsEvent(
-        page: state.currentPage + 1,
+        page: nextPage,
         limit: _pageSize,
         serviceType: _serviceType,
         transactionType: _transactionType,
@@ -119,6 +125,8 @@ class _TransactionScreenState extends State<_TransactionView> {
   String? get _serviceType => _serviceNotifier.value?.name;
 
   void _dispatchFetch() {
+    _requestedLoadMorePage = null;
+
     context.read<TransactionGetBloc>().add(
       FetchTransactionsEvent(
         page: 1,
@@ -136,19 +144,6 @@ class _TransactionScreenState extends State<_TransactionView> {
     await context.read<TransactionGetBloc>().stream.firstWhere(
       (state) => state is! TransactionGetLoading,
     );
-  }
-
-  Map<String, List<TransactionDetailsModel>> _groupTransactions(
-    List<TransactionDetailsModel> transactions,
-  ) {
-    final grouped = <String, List<TransactionDetailsModel>>{};
-    for (final transaction in transactions) {
-      final key = transaction.date?.isNotEmpty == true
-          ? transaction.date!
-          : 'Unknown Date';
-      grouped.putIfAbsent(key, () => []).add(transaction);
-    }
-    return grouped;
   }
 
   @override
@@ -171,7 +166,6 @@ class _TransactionScreenState extends State<_TransactionView> {
           titleColor: c.textPrimary,
 
           subtitleColor: c.textSecondary,
-
           trailing: _IconBtn(
             icon: Icons.tune_rounded,
 
@@ -259,7 +253,12 @@ class _TransactionScreenState extends State<_TransactionView> {
               const SizedBox(height: 4),
 
               Expanded(
-                child: BlocBuilder<TransactionGetBloc, TransactionGetState>(
+                child: BlocConsumer<TransactionGetBloc, TransactionGetState>(
+                  listener: (context, state) {
+                    if (state is TransactionGetLoaded && !state.isLoadingMore) {
+                      _requestedLoadMorePage = null;
+                    }
+                  },
                   builder: (context, state) {
                     if (state is TransactionGetInitial ||
                         state is TransactionGetLoading) {
@@ -283,7 +282,7 @@ class _TransactionScreenState extends State<_TransactionView> {
                         color: c.primary,
                         backgroundColor: c.surface,
                         child: _TransactionList(
-                          grouped: _groupTransactions(state.transactions),
+                          grouped: state.groupedTransactions,
                           scrollController: _scrollController,
                           isLoadingMore: state.isLoadingMore,
                         ),
@@ -508,17 +507,44 @@ class _TransactionList extends StatelessWidget {
   final Map<String, List<TransactionDetailsModel>> grouped;
   final ScrollController scrollController;
   final bool isLoadingMore;
+  final List<_TransactionListItem> rows;
 
-  const _TransactionList({
+  _TransactionList({
     required this.grouped,
     required this.scrollController,
     required this.isLoadingMore,
-  });
+  }) : rows = _buildRows(grouped, isLoadingMore);
+
+  static List<_TransactionListItem> _buildRows(
+    Map<String, List<TransactionDetailsModel>> grouped,
+    bool isLoadingMore,
+  ) {
+    final rows = <_TransactionListItem>[];
+
+    grouped.forEach((date, transactions) {
+      rows.add(_TransactionListItem.header(date, transactions.length));
+
+      for (var i = 0; i < transactions.length; i++) {
+        rows.add(
+          _TransactionListItem.transaction(
+            transactions[i],
+            isFirstInGroup: i == 0,
+            isLastInGroup: i == transactions.length - 1,
+          ),
+        );
+      }
+    });
+
+    if (isLoadingMore) {
+      rows.add(const _TransactionListItem.loading());
+    }
+
+    return rows;
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final keys = grouped.keys.toList();
 
     return ListView.builder(
       controller: scrollController,
@@ -526,69 +552,108 @@ class _TransactionList extends StatelessWidget {
         parent: BouncingScrollPhysics(),
       ),
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      itemCount: keys.length + (isLoadingMore ? 1 : 0),
+      itemCount: rows.length,
       itemBuilder: (_, i) {
-        if (i >= keys.length) return const _LoadMoreIndicator();
+        final row = rows[i];
 
-        final key = keys[i];
-        final items = grouped[key]!;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
-              child: Row(
-                children: [
-                  Text(
-                    key,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: c.textSecondary,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: Container(height: 1, color: c.border)),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${items.length} ${items.length == 1 ? "txn" : "txns"}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: c.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        if (row.isLoading) {
+          return const _LoadMoreIndicator();
+        }
 
-            Container(
-              decoration: BoxDecoration(
-                color: c.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: c.border),
-              ),
-              child: Column(
-                children: List.generate(items.length, (idx) {
-                  return Column(
-                    children: [
-                      _TransactionTile(txn: items[idx]),
-                      if (idx != items.length - 1)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Container(height: 1, color: c.border),
-                        ),
-                    ],
-                  );
-                }),
-              ),
+        if (row.date != null) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+            child: Row(
+              children: [
+                Text(
+                  row.date!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: c.textSecondary,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Container(height: 1, color: c.border)),
+                const SizedBox(width: 8),
+                Text(
+                  '${row.count} ${row.count == 1 ? "txn" : "txns"}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: c.textMuted,
+                  ),
+                ),
+              ],
             ),
-          ],
+          );
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            color: c.surface,
+            borderRadius: BorderRadius.vertical(
+              top: row.isFirstInGroup ? const Radius.circular(16) : Radius.zero,
+              bottom: row.isLastInGroup
+                  ? const Radius.circular(16)
+                  : Radius.zero,
+            ),
+            border: Border(
+              left: BorderSide(color: c.border),
+              right: BorderSide(color: c.border),
+              top: row.isFirstInGroup
+                  ? BorderSide(color: c.border)
+                  : BorderSide.none,
+              bottom: BorderSide(color: c.border),
+            ),
+          ),
+          // child: Column(
+          //   children: [
+          //     _TransactionTile(txn: row.transaction!),
+          //     // if (!row.isLastInGroup)
+          //     //   Padding(
+          //     //     padding: const EdgeInsets.symmetric(horizontal: 16),
+          //     //     child: Container(height: 1, color: c.border),
+          //     //   ),
+          //   ],
+          // ),
+          child: _TransactionTile(txn: row.transaction!),
         );
       },
     );
   }
+}
+
+class _TransactionListItem {
+  final String? date;
+  final int count;
+  final TransactionDetailsModel? transaction;
+  final bool isFirstInGroup;
+  final bool isLastInGroup;
+  final bool isLoading;
+
+  const _TransactionListItem.header(this.date, this.count)
+    : transaction = null,
+      isFirstInGroup = false,
+      isLastInGroup = false,
+      isLoading = false;
+
+  const _TransactionListItem.transaction(
+    this.transaction, {
+    required this.isFirstInGroup,
+    required this.isLastInGroup,
+  }) : date = null,
+       count = 0,
+       isLoading = false;
+
+  const _TransactionListItem.loading()
+    : date = null,
+      count = 0,
+      transaction = null,
+      isFirstInGroup = false,
+      isLastInGroup = false,
+      isLoading = true;
 }
 
 // =========================
@@ -636,9 +701,7 @@ class _TransactionTile extends StatelessWidget {
                     child: Center(
                       child: AppConfig.serviceIcon(
                         service,
-
                         size: 20,
-
                         color: AppConfig.serviceColor(service),
                       ),
                     ),
@@ -693,10 +756,10 @@ class _TransactionTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                         color: c.textPrimary,
-                        height: 1.3,
+                        height: 1,
                       ),
                     ),
                     if ((txn.dltCharge ?? 0) > 0) ...[

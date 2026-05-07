@@ -50,15 +50,22 @@ class SendSingleMessageEvent extends SingleConversionsEvent {
   final String customerMobile;
   final String message;
   final String messageType;
+  String? attachment;
 
-  const SendSingleMessageEvent({
+  SendSingleMessageEvent({
     required this.customerMobile,
     required this.message,
     this.messageType = 'text',
+    this.attachment = '',
   });
 
   @override
-  List<Object> get props => [customerMobile, message, messageType];
+  List<Object> get props => [
+    customerMobile,
+    message,
+    messageType,
+    attachment = '',
+  ];
 }
 
 class MarkMessagesAsReadEvent extends SingleConversionsEvent {

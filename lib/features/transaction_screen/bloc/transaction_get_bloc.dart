@@ -36,6 +36,7 @@ class TransactionGetBloc
         emit(
           TransactionGetLoaded(
             transactions: res.data,
+            groupedTransactions: _groupTransactions(res.data),
             hasMore: res.hasMore,
             isLoadingMore: false,
             currentPage: res.page,
@@ -78,9 +79,11 @@ class TransactionGetBloc
       );
 
       if (res.success) {
+        final transactions = [...currentState.transactions, ...res.data];
         emit(
           currentState.copyWith(
-            transactions: [...currentState.transactions, ...res.data],
+            transactions: transactions,
+            groupedTransactions: _groupTransactions(transactions),
             hasMore: res.hasMore,
             isLoadingMore: false,
             currentPage: res.page,
@@ -96,5 +99,20 @@ class TransactionGetBloc
     } catch (_) {
       emit(currentState.copyWith(isLoadingMore: false));
     }
+  }
+
+  Map<String, List<TransactionDetailsModel>> _groupTransactions(
+    List<TransactionDetailsModel> transactions,
+  ) {
+    final grouped = <String, List<TransactionDetailsModel>>{};
+
+    for (final transaction in transactions) {
+      final key = transaction.date?.isNotEmpty == true
+          ? transaction.date!
+          : 'Unknown Date';
+      grouped.putIfAbsent(key, () => []).add(transaction);
+    }
+
+    return grouped;
   }
 }

@@ -7,6 +7,7 @@ import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/app_colors.dart';
 import 'package:synqer_io/core/theme/theme_controller.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/core/utils/app_configarations.dart';
 import 'package:synqer_io/core/utils/error_widget.dart';
 import 'package:synqer_io/core/utils/helper_methods.dart';
 import 'package:synqer_io/core/widgets/app_popover_dailog.dart';
@@ -178,7 +179,8 @@ class _ProfileViewState extends State<_ProfileView>
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => TransactionScreen(),
+                          builder: (context) =>
+                              TransactionScreen(allServiceBalance: user!),
                         ),
                       );
                     },
@@ -490,7 +492,7 @@ class _ProfileViewState extends State<_ProfileView>
                   ),
                 ),
                 _BalanceChannelRow(
-                  icon: Icons.sms_rounded,
+                  service: 'sms',
                   label: 'SMS Balance',
                   sublabel: 'Text messaging',
                   amount: _fmtMoney(user?.smsBalance, currency),
@@ -499,7 +501,7 @@ class _ProfileViewState extends State<_ProfileView>
                 ),
                 const SizedBox(height: 8),
                 _BalanceChannelRow(
-                  icon: Icons.chat_rounded,
+                  service: 'whatsapp',
                   label: 'WhatsApp Balance',
                   sublabel: 'Business messaging',
                   amount: _fmtMoney(user?.whatsappBalance, currency),
@@ -609,7 +611,7 @@ class _ProfileViewState extends State<_ProfileView>
           const SizedBox(height: 14),
           if (hasSms)
             _PricingRow(
-              icon: Icons.sms_rounded,
+              service: 'sms',
               label: 'SMS',
               sublabel: 'Standard text messaging',
               value: _fmtPriceShort(user!.smsPricing, currency),
@@ -620,7 +622,7 @@ class _ProfileViewState extends State<_ProfileView>
           if (hasSms && (hasWa || hasRcs)) const SizedBox(height: 8),
           if (hasWa)
             _PricingRow(
-              icon: Icons.chat_rounded,
+              service: 'whatsapp',
               label: 'WhatsApp',
               sublabel: 'Business API messaging',
               value: _fmtPriceShort(user!.whatsappPricing, currency),
@@ -806,13 +808,13 @@ class _ProfileViewState extends State<_ProfileView>
   Widget _buildServicesCard(AppColors c, User? user) {
     final s = user?.services;
     final items = <_SvcEntry>[
-      if (s?.sms == true) _SvcEntry('SMS', Icons.sms_outlined, c.primary),
-      if (s?.whatsapp == true)
-        _SvcEntry('WhatsApp', Icons.chat_bubble_outline_rounded, c.green),
-      if (s?.chatbot == true)
-        _SvcEntry('AI Chatbot', Icons.smart_toy_outlined, c.secondary),
-      if (s?.rcs == true)
-        _SvcEntry('RCS', Icons.rss_feed_rounded, const Color(0xFFF59E0B)),
+      if (s?.sms == true) _SvcEntry('SMS', 'sms', c.primary),
+
+      if (s?.whatsapp == true) _SvcEntry('WhatsApp', 'whatsapp', c.green),
+
+      if (s?.chatbot == true) _SvcEntry('AI Chatbot', 'chatbot', c.secondary),
+
+      if (s?.rcs == true) _SvcEntry('RCS', 'rcs', const Color(0xFFF59E0B)),
     ];
 
     return _Card(
@@ -1029,12 +1031,18 @@ String? _pick(String? a, [String? b]) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _BalanceChannelRow extends StatelessWidget {
-  final IconData icon;
-  final String label, sublabel, amount;
+  final String service;
+
+  final String label;
+  final String sublabel;
+  final String amount;
+
   final Color accent;
+
   final AppColors c;
+
   const _BalanceChannelRow({
-    required this.icon,
+    required this.service,
     required this.label,
     required this.sublabel,
     required this.amount,
@@ -1043,76 +1051,102 @@ class _BalanceChannelRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    decoration: BoxDecoration(
-      color: c.surfaceHigh,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: c.border),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [accent.withOpacity(0.18), accent.withOpacity(0.08)],
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+
+      decoration: BoxDecoration(
+        color: c.surfaceHigh,
+
+        borderRadius: BorderRadius.circular(12),
+
+        border: Border.all(color: c.border),
+      ),
+
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+
+                colors: [accent.withOpacity(0.18), accent.withOpacity(0.08)],
+              ),
+
+              borderRadius: BorderRadius.circular(10),
+
+              border: Border.all(color: accent.withOpacity(0.25)),
             ),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: accent.withOpacity(0.25)),
+
+            child: Center(
+              child: AppConfig.serviceIcon(service, size: 18, color: accent),
+            ),
           ),
-          child: Icon(icon, size: 18, color: accent),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+
+              children: [
+                Text(
+                  label,
+
+                  style: TextStyle(
+                    color: c.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                const SizedBox(height: 1),
+
+                Text(
+                  sublabel,
+
+                  style: TextStyle(color: c.textMuted, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+
             children: [
               Text(
-                label,
+                amount,
+
                 style: TextStyle(
                   color: c.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
                 ),
               ),
+
               const SizedBox(height: 1),
+
               Text(
-                sublabel,
-                style: TextStyle(color: c.textMuted, fontSize: 10),
+                'available',
+
+                style: TextStyle(
+                  color: c.textMuted,
+                  fontSize: 9,
+                  letterSpacing: 0.2,
+                ),
               ),
             ],
           ),
-        ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              amount,
-              style: TextStyle(
-                color: c.textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.2,
-              ),
-            ),
-            const SizedBox(height: 1),
-            Text(
-              'available',
-              style: TextStyle(
-                color: c.textMuted,
-                fontSize: 9,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class _BalanceRcsRow extends StatelessWidget {
@@ -1154,7 +1188,10 @@ class _BalanceRcsRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: accent.withOpacity(0.25)),
               ),
-              child: Icon(Icons.rss_feed_rounded, size: 18, color: accent),
+              // child: Icon(Icons.rss_feed_rounded, size: 18, color: accent),
+              child: Center(
+                child: AppConfig.serviceIcon('rcs', size: 18, color: accent),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1280,12 +1317,19 @@ class _BalanceRcsRow extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _PricingRow extends StatelessWidget {
-  final IconData icon;
-  final String label, sublabel, value, unit;
+  final String service;
+
+  final String label;
+  final String sublabel;
+  final String value;
+  final String unit;
+
   final Color accent;
+
   final AppColors c;
+
   const _PricingRow({
-    required this.icon,
+    required this.service,
     required this.label,
     required this.sublabel,
     required this.value,
@@ -1295,75 +1339,101 @@ class _PricingRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    decoration: BoxDecoration(
-      color: c.surfaceHigh,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: c.border),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: accent.withOpacity(0.10),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: accent.withOpacity(0.22)),
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+
+      decoration: BoxDecoration(
+        color: c.surfaceHigh,
+
+        borderRadius: BorderRadius.circular(12),
+
+        border: Border.all(color: c.border),
+      ),
+
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+
+            decoration: BoxDecoration(
+              color: accent.withOpacity(0.10),
+
+              borderRadius: BorderRadius.circular(10),
+
+              border: Border.all(color: accent.withOpacity(0.22)),
+            ),
+
+            child: Center(
+              child: AppConfig.serviceIcon(service, size: 17, color: accent),
+            ),
           ),
-          child: Icon(icon, size: 17, color: accent),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+
+              children: [
+                Text(
+                  label,
+
+                  style: TextStyle(
+                    color: c.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                const SizedBox(height: 1),
+
+                Text(
+                  sublabel,
+
+                  style: TextStyle(color: c.textMuted, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+
             children: [
               Text(
-                label,
+                value,
+
                 style: TextStyle(
                   color: c.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
                 ),
               ),
-              const SizedBox(height: 1),
-              Text(
-                sublabel,
-                style: TextStyle(color: c.textMuted, fontSize: 10),
+
+              const SizedBox(width: 2),
+
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+
+                child: Text(
+                  unit,
+
+                  style: TextStyle(
+                    color: c.textMuted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                color: c.textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.2,
-              ),
-            ),
-            const SizedBox(width: 2),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Text(
-                unit,
-                style: TextStyle(
-                  color: c.textMuted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class _PricingRcsRow extends StatelessWidget {
@@ -1401,7 +1471,9 @@ class _PricingRcsRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: accent.withOpacity(0.22)),
               ),
-              child: Icon(Icons.rss_feed_rounded, size: 17, color: accent),
+              child: Center(
+                child: AppConfig.serviceIcon('rcs', size: 17, color: accent),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1626,9 +1698,12 @@ class _PremiumSectionHeader extends StatelessWidget {
 
 class _SvcEntry {
   final String name;
-  final IconData icon;
+
+  final String service;
+
   final Color color;
-  const _SvcEntry(this.name, this.icon, this.color);
+
+  const _SvcEntry(this.name, this.service, this.color);
 }
 
 // ─── Loading / Error ──────────────────────────────────────────────────────────
@@ -1946,7 +2021,15 @@ class _ServiceRowTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: entry.color.withOpacity(0.22)),
           ),
-          child: Icon(entry.icon, size: 15, color: entry.color),
+          child: Center(
+            child: entry.service == 'chatbot'
+                ? Icon(Icons.smart_toy_outlined, size: 15, color: entry.color)
+                : AppConfig.serviceIcon(
+                    entry.service,
+                    size: 15,
+                    color: entry.color,
+                  ),
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:synqer_io/app_export.dart';
 import 'package:synqer_io/core/model/paginated_response.dart';
 import 'package:synqer_io/features/transaction_screen/model/transaction_model.dart';
@@ -28,7 +27,7 @@ class TransactionGetRepo {
       },
     );
 
-    final transactions = await compute(parseTransactions, response['data']);
+    final transactions = parseTransactions(response['data']);
     bool hasMore =
         ((response['page'] ?? 1) * (response['limit'] ?? 0)) <
         (response['total'] ?? 0);

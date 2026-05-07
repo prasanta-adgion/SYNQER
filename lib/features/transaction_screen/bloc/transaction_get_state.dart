@@ -13,6 +13,7 @@ final class TransactionGetLoading extends TransactionGetState {}
 
 class TransactionGetLoaded extends TransactionGetState {
   final List<TransactionDetailsModel> transactions;
+  final Map<String, List<TransactionDetailsModel>> groupedTransactions;
   final bool hasMore;
   final bool isLoadingMore;
   final int currentPage;
@@ -23,6 +24,7 @@ class TransactionGetLoaded extends TransactionGetState {
 
   const TransactionGetLoaded({
     required this.transactions,
+    required this.groupedTransactions,
     required this.hasMore,
     required this.isLoadingMore,
     required this.currentPage,
@@ -34,6 +36,7 @@ class TransactionGetLoaded extends TransactionGetState {
 
   TransactionGetLoaded copyWith({
     List<TransactionDetailsModel>? transactions,
+    Map<String, List<TransactionDetailsModel>>? groupedTransactions,
     bool? hasMore,
     bool? isLoadingMore,
     int? currentPage,
@@ -44,6 +47,7 @@ class TransactionGetLoaded extends TransactionGetState {
   }) {
     return TransactionGetLoaded(
       transactions: transactions ?? this.transactions,
+      groupedTransactions: groupedTransactions ?? this.groupedTransactions,
       hasMore: hasMore ?? this.hasMore,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       currentPage: currentPage ?? this.currentPage,
@@ -57,6 +61,7 @@ class TransactionGetLoaded extends TransactionGetState {
   @override
   List<Object?> get props => [
     transactions,
+    groupedTransactions,
     hasMore,
     isLoadingMore,
     currentPage,

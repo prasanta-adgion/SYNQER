@@ -45,12 +45,16 @@ class SingleConversionRepo {
     required String customerMobile,
     required String message,
     required String messageType,
+    String? file,
   }) async {
     final res = await dio.post(APIsEndPoints.sendMessage, requiresAuth: true, {
       'mobile': customerMobile,
       'message_type': messageType,
       'message': message,
+      'file': file,
     });
+
+    debugPrint(res.toString());
 
     return res;
   }

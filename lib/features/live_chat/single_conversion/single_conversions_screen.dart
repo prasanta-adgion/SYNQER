@@ -5,13 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/core/utils/any_file_picker.dart';
 import 'package:synqer_io/core/utils/app_images.dart';
 import 'package:synqer_io/core/widgets/app_snackbar.dart';
+import 'package:synqer_io/core/widgets/filepicker_bottomsheet.dart';
 import 'package:synqer_io/core/widgets/image_full_preview.dart';
 import 'package:synqer_io/core/widgets/loading_screen.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/bloc/single_conversions_bloc.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/model/single_conversion_model.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/widgets/chat_appbar.dart';
+import 'package:synqer_io/features/live_chat/single_conversion/widgets/media_preview_screen.dart';
 import 'package:video_player/video_player.dart';
 
 class SingleConversionsBlocProviderWrapper extends StatelessWidget {
@@ -107,7 +110,7 @@ class _SingleChatState extends State<SingleChat> {
     super.dispose();
   }
 
-  Future<void> sendMessage(String messageType) async {
+  Future<void> sendMessage(String messageType, {String file = ''}) async {
     final text = _msgController.text.trim();
 
     if (text.isEmpty) return;
@@ -119,6 +122,7 @@ class _SingleChatState extends State<SingleChat> {
         customerMobile: widget.customerNumber,
         message: text,
         messageType: messageType,
+        attachment: file,
       ),
     );
 
@@ -351,6 +355,27 @@ class _SingleChatState extends State<SingleChat> {
                     child: MessageInputBar(
                       controller: _msgController,
                       onSend: () => sendMessage('text'),
+                      onFilePicked: (file) async {
+                        if (file != null && context.mounted) {
+                          Navigator.push(
+                            context,
+
+                            MaterialPageRoute(
+                              builder: (_) => MediaPreviewScreen(
+                                file: file,
+
+                                onSend: (pickedFile, caption) {
+                                  debugPrint(pickedFile.name);
+
+                                  debugPrint(caption);
+
+                                  // send message api
+                                },
+                              ),
+                            ),
+                          );
+                        }
+                      },
                     ),
                   ),
                 ),
@@ -829,12 +854,16 @@ class DateSeparator extends StatelessWidget {
 
 class MessageInputBar extends StatelessWidget {
   final TextEditingController controller;
+
   final VoidCallback onSend;
+
+  final ValueChanged<AppPickedFile>? onFilePicked;
 
   const MessageInputBar({
     super.key,
     required this.controller,
     required this.onSend,
+    this.onFilePicked,
   });
 
   @override
@@ -843,27 +872,41 @@ class MessageInputBar extends StatelessWidget {
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
+
       children: [
         Expanded(
           child: Container(
             decoration: BoxDecoration(
               color: c.surfaceHigh,
+
               borderRadius: BorderRadius.circular(24),
+
               border: Border.all(color: c.border),
             ),
+
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: controller,
+
                     minLines: 1,
                     maxLines: 4,
+
                     textInputAction: TextInputAction.send,
+
                     onSubmitted: (_) => onSend(),
-                    decoration: const InputDecoration(
+
+                    style: TextStyle(color: c.textPrimary),
+
+                    decoration: InputDecoration(
                       hintText: "Message",
+
+                      hintStyle: TextStyle(color: c.textMuted),
+
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
+
+                      contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 12,
                       ),
@@ -872,10 +915,18 @@ class MessageInputBar extends StatelessWidget {
                 ),
 
                 IconButton(
-                  onPressed: () {},
-                  icon: Icon(Icons.attach_file_rounded),
+                  onPressed: () async {
+                    final file = await FilePickerBottomSheet.show(context);
+
+                    if (file != null && onFilePicked != null) {
+                      onFilePicked!(file);
+                    }
+                  },
+
+                  icon: Icon(Icons.attach_file_rounded, color: c.textSecondary),
                 ),
-                const SizedBox(width: 10),
+
+                const SizedBox(width: 4),
               ],
             ),
           ),
@@ -885,14 +936,19 @@ class MessageInputBar extends StatelessWidget {
 
         Material(
           color: c.green,
+
           borderRadius: BorderRadius.circular(30),
+
           child: InkWell(
             onTap: onSend,
+
             borderRadius: BorderRadius.circular(30),
+
             child: SizedBox(
               width: 50,
               height: 50,
-              child: Center(child: Icon(Icons.send, color: c.onBrand)),
+
+              child: Center(child: Icon(Icons.send_rounded, color: c.onBrand)),
             ),
           ),
         ),

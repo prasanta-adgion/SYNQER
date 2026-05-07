@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
-import '../theme/app_colors.dart';
 
 enum SnackbarType { success, error, info }
 

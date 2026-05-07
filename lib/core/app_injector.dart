@@ -3,6 +3,7 @@ import 'package:synqer_io/features/live_chat/live_conversions/repository/convers
 import 'package:synqer_io/features/live_chat/single_conversion/repository/single_conversion_repo.dart';
 import 'package:synqer_io/features/live_chat/save_contact/repository/get_groups_repo.dart';
 import 'package:synqer_io/features/profile/repository/profile_repo.dart';
+import 'package:synqer_io/features/transaction_screen/repository/transaction_get_repo.dart';
 import 'package:synqer_io/features/user_login/repo/login_repo.dart';
 
 class AppInjector {
@@ -22,4 +23,9 @@ class AppInjector {
 
   //profile
   static final ProfileRepo profileRepo = ProfileRepo(dio: dio);
+
+  //get transactions
+  static final TransactionGetRepo transactionsRepo = TransactionGetRepo(
+    dio: dio,
+  );
 }

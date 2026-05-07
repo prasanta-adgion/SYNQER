@@ -1,4 +1,6 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 
 class AppConfig {
@@ -49,6 +51,37 @@ class AppConfig {
       mode: url_launcher.LaunchMode.externalApplication,
     )) {
       throw 'Could not launch $url';
+    }
+  }
+
+  //All Service Model Icons and Color
+
+  static Color serviceColor(String service) {
+    switch (service) {
+      case 'sms':
+        return const Color(0xFF4F46E5);
+      case 'whatsapp':
+        return const Color(0xFF10B981);
+      case 'rcs':
+        return const Color(0xFFF97316);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  static Widget serviceIcon(String service, {double size = 20, Color? color}) {
+    switch (service) {
+      case 'sms' || 'bulk sms':
+        return Icon(Icons.sms_rounded, size: size, color: color);
+
+      case 'whatsapp':
+        return FaIcon(FontAwesomeIcons.whatsapp, size: size, color: color);
+
+      case 'rcs':
+        return Icon(CupertinoIcons.text_bubble, size: size, color: color);
+
+      default:
+        return Icon(Icons.receipt_long_rounded, size: size, color: color);
     }
   }
 }

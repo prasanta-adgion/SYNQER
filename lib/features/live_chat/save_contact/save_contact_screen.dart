@@ -34,9 +34,6 @@ class _SaveContactState extends State<SaveContact> {
 
   final ValueNotifier<bool> _isSaving = ValueNotifier(false);
 
-  // Store selected group details
-  Map<String, dynamic>? _selectedGroup;
-
   @override
   void initState() {
     super.initState();
@@ -74,7 +71,6 @@ class _SaveContactState extends State<SaveContact> {
 
     if (result != null && result is Map<String, dynamic>) {
       setState(() {
-        _selectedGroup = result;
         groupController.text = result['groupName'] ?? '';
       });
     }
@@ -353,10 +349,7 @@ class _GroupSelectionScreenState extends State<GroupSelectionScreen> {
 
     return Scaffold(
       backgroundColor: c.surface,
-      appBar: CustomAppBar(
-        title: 'Select Group',
-        onBackTap: () => Navigator.pop(context),
-      ),
+      appBar: CustomAppBar(title: 'Select Group'),
       body: Column(
         children: [
           _SearchBar(
