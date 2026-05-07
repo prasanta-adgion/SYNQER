@@ -2,333 +2,177 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/enums/transaction_enums.dart';
+import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/core/utils/app_configarations.dart';
+import 'package:synqer_io/core/widgets/custom_appbar.dart';
+import 'package:synqer_io/core/widgets/loading_screen.dart';
+import 'package:synqer_io/features/profile/model/user_profile_model.dart';
+import 'package:synqer_io/features/transaction_screen/bloc/transaction_get_bloc.dart';
+import 'package:synqer_io/features/transaction_screen/model/transaction_model.dart';
+import 'package:synqer_io/features/transaction_screen/widgets/balance_card.dart';
 import 'package:synqer_io/features/transaction_screen/widgets/filterted_screen.dart';
 
-class Transaction {
-  final String id;
-  final TxnType type;
-  final double amount;
-  final double balanceBefore;
-  final double balanceAfter;
-  final TxnService service;
-  final String description;
-  final DateTime createdAt;
-  final double? dltCharge;
-  final Map<String, dynamic> meta;
-
-  Transaction({
-    required this.id,
-    required this.type,
-    required this.amount,
-    required this.balanceBefore,
-    required this.balanceAfter,
-    required this.service,
-    required this.description,
-    required this.createdAt,
-    this.dltCharge,
-    this.meta = const {},
-  });
-}
-
-// =========================
-// SAMPLE DATA (mirrors your API)
-// =========================
-final List<Transaction> _sampleTxns = [
-  Transaction(
-    id: '69f9a7bb',
-    type: TxnType.credit,
-    amount: 50,
-    balanceBefore: 47.8,
-    balanceAfter: 97.8,
-    service: TxnService.sms,
-    description: 'SMS balance added by reseller',
-    createdAt: DateTime.parse('2026-05-05T13:48:03'),
-  ),
-  Transaction(
-    id: '69f9a639',
-    type: TxnType.credit,
-    amount: 5,
-    balanceBefore: 42.8,
-    balanceAfter: 47.8,
-    service: TxnService.sms,
-    description: 'SMS balance added by reseller',
-    createdAt: DateTime.parse('2026-05-05T13:41:37'),
-  ),
-  Transaction(
-    id: '69f66cd8',
-    type: TxnType.refund,
-    amount: 0.9,
-    balanceBefore: 86.56,
-    balanceAfter: 87.46,
-    service: TxnService.whatsapp,
-    description: 'Refund for 1 failed WhatsApp messages',
-    createdAt: DateTime.parse('2026-05-03T03:00:00'),
-  ),
-  Transaction(
-    id: '69f665d0',
-    type: TxnType.refund,
-    amount: 0.7,
-    balanceBefore: 691.6,
-    balanceAfter: 692.30,
-    service: TxnService.rcs,
-    description: 'Refund for 1 failed RCS richMedia messages',
-    createdAt: DateTime.parse('2026-05-03T02:30:00'),
-  ),
-  Transaction(
-    id: '69f65ec8',
-    type: TxnType.refund,
-    amount: 0.475,
-    balanceBefore: 42.325,
-    balanceAfter: 42.80,
-    service: TxnService.sms,
-    description: 'Refund for 1 failed SMS',
-    createdAt: DateTime.parse('2026-05-03T02:00:00'),
-    dltCharge: 0.025,
-  ),
-  Transaction(
-    id: '69f5f636',
-    type: TxnType.debit,
-    amount: 0.9,
-    balanceBefore: 87.46,
-    balanceAfter: 86.56,
-    service: TxnService.whatsapp,
-    description: 'WhatsApp campaign: ark',
-    createdAt: DateTime.parse('2026-05-02T18:33:50'),
-  ),
-  Transaction(
-    id: '69f5f5dc',
-    type: TxnType.debit,
-    amount: 0.5,
-    balanceBefore: 42.825,
-    balanceAfter: 42.325,
-    service: TxnService.sms,
-    description: 'SMS campaign: ark',
-    createdAt: DateTime.parse('2026-05-02T18:32:20'),
-  ),
-  Transaction(
-    id: '69f5f58f',
-    type: TxnType.debit,
-    amount: 0.7,
-    balanceBefore: 692.3,
-    balanceAfter: 691.6,
-    service: TxnService.rcs,
-    description: 'RCS campaign: ark',
-    createdAt: DateTime.parse('2026-05-02T18:31:03'),
-  ),
-  Transaction(
-    id: '69f5f52e',
-    type: TxnType.debit,
-    amount: 0.5,
-    balanceBefore: 43.325,
-    balanceAfter: 42.825,
-    service: TxnService.sms,
-    description: 'SMS campaign: ark',
-    createdAt: DateTime.parse('2026-05-02T18:29:26'),
-  ),
-  Transaction(
-    id: '69f51450',
-    type: TxnType.refund,
-    amount: 0.7,
-    balanceBefore: 691.6,
-    balanceAfter: 692.30,
-    service: TxnService.rcs,
-    description: 'Refund for 1 failed RCS richMedia messages',
-    createdAt: DateTime.parse('2026-05-02T02:30:00'),
-  ),
-  Transaction(
-    id: '69f50d48',
-    type: TxnType.refund,
-    amount: 0.475,
-    balanceBefore: 42.85,
-    balanceAfter: 43.325,
-    service: TxnService.sms,
-    description: 'Refund for 1 failed SMS',
-    createdAt: DateTime.parse('2026-05-02T02:00:00'),
-    dltCharge: 0.025,
-  ),
-];
-
-// =========================
-// MAIN SCREEN
-// =========================
-class TransactionScreen extends StatefulWidget {
-  const TransactionScreen({super.key});
-
-  @override
-  State<TransactionScreen> createState() => _TransactionScreenState();
-}
-
-class _TransactionScreenState extends State<TransactionScreen> {
-  final ValueNotifier<TxnFilter> _filterNotifier = ValueNotifier(TxnFilter.all);
-
-  final ValueNotifier<TxnService?> _serviceNotifier = ValueNotifier(null);
-
-  String _dateGroupLabel(DateTime dt) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final date = DateTime(dt.year, dt.month, dt.day);
-    final diff = today.difference(date).inDays;
-    if (diff == 0) return 'Today';
-    if (diff == 1) return 'Yesterday';
-    if (diff < 7) return '$diff days ago';
-    return DateFormat('d MMM yyyy').format(dt);
-  }
+class TransactionScreen extends StatelessWidget {
+  final User allServiceBalance;
+  const TransactionScreen({super.key, required this.allServiceBalance});
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(
-        statusBarColor: Colors.transparent,
-      ),
-
-      child: Scaffold(
-        body: SafeArea(
-          child: ValueListenableBuilder<TxnFilter>(
-            valueListenable: _filterNotifier,
-
-            builder: (context, filterValue, _) {
-              return ValueListenableBuilder<TxnService?>(
-                valueListenable: _serviceNotifier,
-
-                builder: (context, serviceValue, __) {
-                  // FILTERED TRANSACTIONS
-                  final filteredTxns = _sampleTxns.where((t) {
-                    final matchesType =
-                        filterValue == TxnFilter.all ||
-                        (filterValue == TxnFilter.credit &&
-                            t.type == TxnType.credit) ||
-                        (filterValue == TxnFilter.debit &&
-                            t.type == TxnType.debit) ||
-                        (filterValue == TxnFilter.refund &&
-                            t.type == TxnType.refund);
-
-                    final matchesService =
-                        serviceValue == null || t.service == serviceValue;
-
-                    return matchesType && matchesService;
-                  }).toList();
-
-                  // GROUPED
-                  final Map<String, List<Transaction>> groupedTxns = {};
-
-                  for (final t in filteredTxns) {
-                    final key = _dateGroupLabel(t.createdAt);
-
-                    groupedTxns.putIfAbsent(key, () => []).add(t);
-                  }
-
-                  return Column(
-                    children: [
-                      _Header(
-                        filterNotifier: _filterNotifier,
-
-                        serviceNotifier: _serviceNotifier,
-                      ),
-
-                      const _BalanceCards(),
-
-                      const SizedBox(height: 8),
-
-                      _FilterBar(
-                        selected: filterValue,
-
-                        onChanged: (f) {
-                          _filterNotifier.value = f;
-                        },
-                      ),
-
-                      _ServiceChipBar(
-                        selected: serviceValue,
-
-                        onChanged: (s) {
-                          _serviceNotifier.value = s;
-                        },
-                      ),
-
-                      const SizedBox(height: 4),
-
-                      Expanded(
-                        child: filteredTxns.isEmpty
-                            ? const _EmptyState()
-                            : _TransactionList(grouped: groupedTxns),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ),
+    return BlocProvider(
+      create: (_) =>
+          TransactionGetBloc(transactionGetRepo: AppInjector.transactionsRepo)
+            ..add(const FetchTransactionsEvent()),
+      child: _TransactionView(allServiceBalance: allServiceBalance),
     );
   }
 }
 
-// =========================
-// HEADER
-// =========================
-class _Header extends StatelessWidget {
-  final ValueNotifier<TxnFilter> filterNotifier;
+class _TransactionView extends StatefulWidget {
+  final User allServiceBalance;
 
-  final ValueNotifier<TxnService?> serviceNotifier;
+  const _TransactionView({required this.allServiceBalance});
 
-  const _Header({required this.filterNotifier, required this.serviceNotifier});
+  @override
+  State<_TransactionView> createState() => _TransactionScreenState();
+}
+
+class _TransactionScreenState extends State<_TransactionView> {
+  static const int _pageSize = 20;
+  static const double _balanceCardsHeight = 130;
+  static const double _scrollHideThreshold = 8; // small dead-zone
+
+  final ValueNotifier<TxnFilter> _filterNotifier = ValueNotifier(TxnFilter.all);
+  final ValueNotifier<TxnService?> _serviceNotifier = ValueNotifier(null);
+  final ValueNotifier<bool> _showBalanceNotifier = ValueNotifier(true);
+  final ScrollController _scrollController = ScrollController();
+
+  String? _fromDate;
+  String? _toDate;
+  double _lastScrollOffset = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _filterNotifier.dispose();
+    _serviceNotifier.dispose();
+    _showBalanceNotifier.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final offset = _scrollController.offset;
+    final delta = offset - _lastScrollOffset;
+
+    if (delta > _scrollHideThreshold && _showBalanceNotifier.value) {
+      _showBalanceNotifier.value = false;
+    } else if (delta < -_scrollHideThreshold && !_showBalanceNotifier.value) {
+      _showBalanceNotifier.value = true;
+    }
+
+    // Always show when at the very top
+    if (offset <= 0 && !_showBalanceNotifier.value) {
+      _showBalanceNotifier.value = true;
+    }
+
+    _lastScrollOffset = offset;
+
+    // Pagination
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    if (offset < maxScroll - 200) return;
+
+    final state = context.read<TransactionGetBloc>().state;
+    if (state is! TransactionGetLoaded ||
+        !state.hasMore ||
+        state.isLoadingMore) {
+      return;
+    }
+
+    context.read<TransactionGetBloc>().add(
+      LoadMoreTransactionsEvent(
+        page: state.currentPage + 1,
+        limit: _pageSize,
+        serviceType: _serviceType,
+        transactionType: _transactionType,
+        dateFrom: _fromDate,
+        dateTo: _toDate,
+      ),
+    );
+  }
+
+  String? get _transactionType {
+    final filter = _filterNotifier.value;
+    return filter == TxnFilter.all ? null : filter.name;
+  }
+
+  String? get _serviceType => _serviceNotifier.value?.name;
+
+  void _dispatchFetch() {
+    context.read<TransactionGetBloc>().add(
+      FetchTransactionsEvent(
+        page: 1,
+        limit: _pageSize,
+        serviceType: _serviceType,
+        transactionType: _transactionType,
+        dateFrom: _fromDate,
+        dateTo: _toDate,
+      ),
+    );
+  }
+
+  Future<void> _onRefresh() async {
+    _dispatchFetch();
+    await context.read<TransactionGetBloc>().stream.firstWhere(
+      (state) => state is! TransactionGetLoading,
+    );
+  }
+
+  Map<String, List<TransactionDetailsModel>> _groupTransactions(
+    List<TransactionDetailsModel> transactions,
+  ) {
+    final grouped = <String, List<TransactionDetailsModel>>{};
+    for (final transaction in transactions) {
+      final key = transaction.date?.isNotEmpty == true
+          ? transaction.date!
+          : 'Unknown Date';
+      grouped.putIfAbsent(key, () => []).add(transaction);
+    }
+    return grouped;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 16, 8),
+    final c = context.colors;
+    final isDark = context.isDark;
 
-      child: Row(
-        children: [
-          _IconBtn(
-            icon: Icons.arrow_back_ios_new_rounded,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+          .copyWith(statusBarColor: Colors.transparent),
+      child: Scaffold(
+        backgroundColor: c.bg,
+        appBar: CustomAppBar(
+          title: 'Transactions',
 
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
+          subtitle: 'All wallet activity',
 
-          const SizedBox(width: 12),
+          backgroundColor: c.surface,
 
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          titleColor: c.textPrimary,
 
-              children: [
-                Text(
-                  'Transactions',
+          subtitleColor: c.textSecondary,
 
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
-                    letterSpacing: -0.4,
-                  ),
-                ),
-
-                SizedBox(height: 2),
-
-                Text(
-                  'All wallet activity',
-
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          _IconBtn(icon: Icons.search_rounded, onTap: () {}),
-
-          const SizedBox(width: 8),
-
-          _IconBtn(
+          trailing: _IconBtn(
             icon: Icons.tune_rounded,
 
             onTap: () async {
@@ -340,26 +184,156 @@ class _Header extends StatelessWidget {
 
                     backgroundColor: Colors.transparent,
 
-                    builder: (_) {
-                      return SafeArea(
-                        top: false,
-                        child: TransactionFilterSheet(
-                          selectedFilter: filterNotifier.value,
+                    builder: (_) => SafeArea(
+                      top: false,
 
-                          selectedService: serviceNotifier.value,
-                        ),
-                      );
-                    },
+                      child: TransactionFilterSheet(
+                        selectedFilter: _filterNotifier.value,
+
+                        selectedService: _serviceNotifier.value,
+                      ),
+                    ),
                   );
 
               if (result != null) {
-                filterNotifier.value = result.filter;
+                _filterNotifier.value = result.filter;
 
-                serviceNotifier.value = result.service;
+                _serviceNotifier.value = result.service;
+
+                _fromDate = result.fromDate;
+
+                _toDate = result.toDate;
+
+                _dispatchFetch();
               }
             },
           ),
-        ],
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              ValueListenableBuilder<bool>(
+                valueListenable: _showBalanceNotifier,
+                builder: (context, show, child) {
+                  return _AnimatedCollapse(
+                    expanded: show,
+                    maxHeight: _balanceCardsHeight,
+                    child: child!,
+                  );
+                },
+                child: BalanceCards(
+                  allServiceBalance: widget.allServiceBalance,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Filter bar — only rebuilds when filter changes
+              ValueListenableBuilder<TxnFilter>(
+                valueListenable: _filterNotifier,
+                builder: (context, filterValue, _) {
+                  return _FilterBar(
+                    selected: filterValue,
+                    onChanged: (f) {
+                      _filterNotifier.value = f;
+                      _dispatchFetch();
+                    },
+                  );
+                },
+              ),
+
+              // Service chips — only rebuilds when service changes
+              ValueListenableBuilder<TxnService?>(
+                valueListenable: _serviceNotifier,
+                builder: (context, serviceValue, _) {
+                  return _ServiceChipBar(
+                    selected: serviceValue,
+                    onChanged: (s) {
+                      _serviceNotifier.value = s;
+                      _dispatchFetch();
+                    },
+                  );
+                },
+              ),
+
+              const SizedBox(height: 4),
+
+              Expanded(
+                child: BlocBuilder<TransactionGetBloc, TransactionGetState>(
+                  builder: (context, state) {
+                    if (state is TransactionGetInitial ||
+                        state is TransactionGetLoading) {
+                      return const _LoadingState();
+                    }
+
+                    if (state is TransactionGetError) {
+                      return _TransactionErrorState(
+                        message: state.message,
+                        onRetry: _dispatchFetch,
+                      );
+                    }
+
+                    if (state is TransactionGetLoaded) {
+                      if (state.transactions.isEmpty) {
+                        return const _EmptyState();
+                      }
+
+                      return RefreshIndicator(
+                        onRefresh: _onRefresh,
+                        color: c.primary,
+                        backgroundColor: c.surface,
+                        child: _TransactionList(
+                          grouped: _groupTransactions(state.transactions),
+                          scrollController: _scrollController,
+                          isLoadingMore: state.isLoadingMore,
+                        ),
+                      );
+                    }
+
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedCollapse extends StatelessWidget {
+  final bool expanded;
+  final double maxHeight;
+  final Widget child;
+
+  const _AnimatedCollapse({
+    required this.expanded,
+    required this.maxHeight,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.topCenter,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: expanded ? 1.0 : 0.0,
+          curve: Curves.easeOut,
+          child: SizedBox(
+            height: expanded ? maxHeight : 0,
+            child: OverflowBox(
+              minHeight: 0,
+              maxHeight: maxHeight,
+              alignment: Alignment.topCenter,
+              child: SizedBox(height: maxHeight, child: child),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -372,11 +346,12 @@ class _IconBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Material(
-      color: Colors.white,
+      color: c.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.black.withOpacity(0.06)),
+        side: BorderSide(color: c.border),
       ),
       child: InkWell(
         onTap: onTap,
@@ -384,135 +359,8 @@ class _IconBtn extends StatelessWidget {
         child: SizedBox(
           width: 40,
           height: 40,
-          child: Icon(icon, size: 18, color: const Color(0xFF334155)),
+          child: Icon(icon, size: 18, color: c.textSecondary),
         ),
-      ),
-    );
-  }
-}
-
-// =========================
-// BALANCE CARDS
-// =========================
-class _BalanceCards extends StatelessWidget {
-  const _BalanceCards();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 130,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        children: const [
-          _ServiceBalanceCard(
-            service: 'Bulk SMS',
-            balance: 97.80,
-            icon: Icons.sms_rounded,
-            gradient: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
-          ),
-          SizedBox(width: 12),
-          _ServiceBalanceCard(
-            service: 'WhatsApp',
-            balance: 86.56,
-            icon: Icons.chat_bubble_rounded,
-            gradient: [Color(0xFF059669), Color(0xFF10B981)],
-          ),
-          SizedBox(width: 12),
-          _ServiceBalanceCard(
-            service: 'RCS',
-            balance: 691.60,
-            icon: Icons.message_rounded,
-            gradient: [Color(0xFFDC2626), Color(0xFFF97316)],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ServiceBalanceCard extends StatelessWidget {
-  final String service;
-  final double balance;
-  final IconData icon;
-  final List<Color> gradient;
-  const _ServiceBalanceCard({
-    required this.service,
-    required this.balance,
-    required this.icon,
-    required this.gradient,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 200,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: gradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: gradient.first.withOpacity(0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: Colors.white, size: 16),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                service,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13.5,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Balance',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.75),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '₹${balance.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -528,38 +376,37 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: c.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.black.withOpacity(0.05)),
+          border: Border.all(color: c.border),
         ),
         child: Row(
           children: TxnFilter.values.map((f) {
             final isActive = f == selected;
             return Expanded(
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () => onChanged(f),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOut,
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   decoration: BoxDecoration(
-                    color: isActive
-                        ? const Color(0xFF0F172A)
-                        : Colors.transparent,
+                    color: isActive ? c.primary : Colors.transparent,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Center(
                     child: Text(
                       _label(f),
                       style: TextStyle(
-                        color: isActive
-                            ? Colors.white
-                            : const Color(0xFF64748B),
+                        color: isActive ? c.onBrand : c.textSecondary,
                         fontWeight: FontWeight.w600,
                         fontSize: 12.5,
                       ),
@@ -596,23 +443,26 @@ class _ServiceChipBar extends StatelessWidget {
   final ValueChanged<TxnService?> onChanged;
   const _ServiceChipBar({required this.selected, required this.onChanged});
 
+  static const _items = <_ChipItem>[
+    _ChipItem('All Services', null),
+    _ChipItem('SMS', TxnService.sms),
+    _ChipItem('WhatsApp', TxnService.whatsapp),
+    _ChipItem('RCS', TxnService.rcs),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final items = <_ChipItem>[
-      _ChipItem('All Services', null),
-      _ChipItem('SMS', TxnService.sms),
-      _ChipItem('WhatsApp', TxnService.whatsapp),
-      _ChipItem('RCS', TxnService.rcs),
-    ];
+    final c = context.colors;
+
     return SizedBox(
       height: 38,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: items.length,
+        itemCount: _items.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
-          final item = items[i];
+          final item = _items[i];
           final isActive = item.service == selected;
           return GestureDetector(
             onTap: () => onChanged(item.service),
@@ -620,30 +470,22 @@ class _ServiceChipBar extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: isActive
-                    ? const Color(0xFF4F46E5).withOpacity(0.1)
-                    : Colors.white,
+                color: isActive ? c.primary.withOpacity(0.12) : c.surface,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isActive
-                      ? const Color(0xFF4F46E5)
-                      : Colors.black.withOpacity(0.06),
+                  color: isActive ? c.primary : c.border,
                   width: isActive ? 1.2 : 1,
                 ),
               ),
-              child: Row(
-                children: [
-                  Text(
-                    item.label,
-                    style: TextStyle(
-                      color: isActive
-                          ? const Color(0xFF4F46E5)
-                          : const Color(0xFF475569),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12.5,
-                    ),
+              child: Center(
+                child: Text(
+                  item.label,
+                  style: TextStyle(
+                    color: isActive ? c.primary : c.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12.5,
                   ),
-                ],
+                ),
               ),
             ),
           );
@@ -656,23 +498,38 @@ class _ServiceChipBar extends StatelessWidget {
 class _ChipItem {
   final String label;
   final TxnService? service;
-  _ChipItem(this.label, this.service);
+  const _ChipItem(this.label, this.service);
 }
 
 // =========================
 // TRANSACTION LIST
 // =========================
 class _TransactionList extends StatelessWidget {
-  final Map<String, List<Transaction>> grouped;
-  const _TransactionList({required this.grouped});
+  final Map<String, List<TransactionDetailsModel>> grouped;
+  final ScrollController scrollController;
+  final bool isLoadingMore;
+
+  const _TransactionList({
+    required this.grouped,
+    required this.scrollController,
+    required this.isLoadingMore,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final keys = grouped.keys.toList();
+
     return ListView.builder(
+      controller: scrollController,
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      itemCount: keys.length,
+      itemCount: keys.length + (isLoadingMore ? 1 : 0),
       itemBuilder: (_, i) {
+        if (i >= keys.length) return const _LoadMoreIndicator();
+
         final key = keys[i];
         final items = grouped[key]!;
         return Column(
@@ -684,37 +541,33 @@ class _TransactionList extends StatelessWidget {
                 children: [
                   Text(
                     key,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF64748B),
+                      color: c.textSecondary,
                       letterSpacing: 0.4,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: Container(
-                      height: 1,
-                      color: Colors.black.withOpacity(0.05),
-                    ),
-                  ),
+                  Expanded(child: Container(height: 1, color: c.border)),
                   const SizedBox(width: 8),
                   Text(
                     '${items.length} ${items.length == 1 ? "txn" : "txns"}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF94A3B8),
+                      color: c.textMuted,
                     ),
                   ),
                 ],
               ),
             ),
+
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: c.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.black.withOpacity(0.05)),
+                border: Border.all(color: c.border),
               ),
               child: Column(
                 children: List.generate(items.length, (idx) {
@@ -724,10 +577,7 @@ class _TransactionList extends StatelessWidget {
                       if (idx != items.length - 1)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Container(
-                            height: 1,
-                            color: Colors.black.withOpacity(0.04),
-                          ),
+                          child: Container(height: 1, color: c.border),
                         ),
                     ],
                   );
@@ -745,16 +595,20 @@ class _TransactionList extends StatelessWidget {
 // TILE
 // =========================
 class _TransactionTile extends StatelessWidget {
-  final Transaction txn;
+  final TransactionDetailsModel txn;
   const _TransactionTile({required this.txn});
 
   @override
   Widget build(BuildContext context) {
-    final config = _typeConfig(txn.type);
-    final sign = txn.type == TxnType.debit ? '-' : '+';
-    final amountColor = txn.type == TxnType.debit
-        ? const Color(0xFFDC2626)
-        : const Color(0xFF059669);
+    final c = context.colors;
+    final type = _normalized(txn.type);
+    final service = _normalized(txn.service);
+    final config = _typeConfig(type, c);
+    final amount = txn.amount ?? 0;
+    final balanceAfter = txn.balanceAfter ?? 0;
+    final isDebit = type == 'debit';
+    final sign = isDebit ? '-' : '+';
+    final amountColor = isDebit ? c.error : c.green;
 
     return Material(
       color: Colors.transparent,
@@ -762,25 +616,31 @@ class _TransactionTile extends StatelessWidget {
         onTap: () => _showDetails(context, txn),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          padding: const EdgeInsets.all(14),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Service icon w/ type badge
               Stack(
                 clipBehavior: Clip.none,
                 children: [
                   Container(
                     width: 44,
                     height: 44,
+
                     decoration: BoxDecoration(
-                      color: _serviceColor(txn.service).withOpacity(0.1),
+                      color: AppConfig.serviceColor(service).withOpacity(0.12),
+
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(
-                      _serviceIcon(txn.service),
-                      color: _serviceColor(txn.service),
-                      size: 20,
+
+                    child: Center(
+                      child: AppConfig.serviceIcon(
+                        service,
+
+                        size: 20,
+
+                        color: AppConfig.serviceColor(service),
+                      ),
                     ),
                   ),
                   Positioned(
@@ -792,7 +652,7 @@ class _TransactionTile extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: config.bg,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+                        border: Border.all(color: c.surface, width: 2),
                       ),
                       child: Icon(config.icon, size: 10, color: config.fg),
                     ),
@@ -800,7 +660,6 @@ class _TransactionTile extends StatelessWidget {
                 ],
               ),
               const SizedBox(width: 12),
-              // Description + meta
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -813,29 +672,34 @@ class _TransactionTile extends StatelessWidget {
                           bg: config.bg,
                         ),
                         const SizedBox(width: 6),
-                        Text(
-                          DateFormat('h:mm a').format(txn.createdAt),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF94A3B8),
-                            fontWeight: FontWeight.w500,
+                        Flexible(
+                          child: Text(
+                            txn.time?.isNotEmpty == true ? txn.time! : '--',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: c.textMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      txn.description,
-                      maxLines: 2,
+                      txn.description?.isNotEmpty == true
+                          ? txn.description!
+                          : 'Transaction',
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF0F172A),
+                        color: c.textPrimary,
                         height: 1.3,
                       ),
                     ),
-                    if (txn.dltCharge != null) ...[
+                    if ((txn.dltCharge ?? 0) > 0) ...[
                       const SizedBox(height: 4),
                       Text(
                         'DLT charge: ₹${txn.dltCharge!.toStringAsFixed(3)}',
@@ -850,12 +714,11 @@ class _TransactionTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              // Amount + balance
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '$sign₹${txn.amount.toStringAsFixed(txn.amount < 1 ? 3 : 2)}',
+                    '$sign₹${amount.toStringAsFixed(amount < 1 ? 3 : 2)}',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -865,11 +728,11 @@ class _TransactionTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Bal ₹${txn.balanceAfter.toStringAsFixed(2)}',
-                    style: const TextStyle(
+                    'Bal ₹${balanceAfter.toStringAsFixed(2)}',
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      color: Color(0xFF94A3B8),
+                      color: c.textMuted,
                     ),
                   ),
                 ],
@@ -881,60 +744,47 @@ class _TransactionTile extends StatelessWidget {
     );
   }
 
-  void _showDetails(BuildContext context, Transaction t) {
+  void _showDetails(BuildContext context, TransactionDetailsModel t) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _TxnDetailSheet(txn: t),
+      builder: (_) => SafeArea(top: false, child: _TxnDetailSheet(txn: t)),
     );
   }
 
-  _TypeConfig _typeConfig(TxnType type) {
+  String _normalized(String? value) => value?.toLowerCase().trim() ?? '';
+
+  _TypeConfig _typeConfig(String type, dynamic c) {
     switch (type) {
-      case TxnType.credit:
+      case 'credit':
         return _TypeConfig(
           label: 'Credit',
           icon: Icons.arrow_downward_rounded,
-          fg: const Color(0xFF059669),
-          bg: const Color(0xFFD1FAE5),
+          fg: c.green as Color,
+          bg: (c.green as Color).withOpacity(0.15),
         );
-      case TxnType.debit:
+      case 'debit':
         return _TypeConfig(
           label: 'Debit',
           icon: Icons.arrow_upward_rounded,
-          fg: const Color(0xFFDC2626),
-          bg: const Color(0xFFFEE2E2),
+          fg: c.error as Color,
+          bg: (c.error as Color).withOpacity(0.15),
         );
-      case TxnType.refund:
+      case 'refund':
         return _TypeConfig(
           label: 'Refund',
           icon: Icons.refresh_rounded,
-          fg: const Color(0xFF2563EB),
-          bg: const Color(0xFFDBEAFE),
+          fg: c.primary as Color,
+          bg: (c.primary as Color).withOpacity(0.15),
         );
-    }
-  }
-
-  Color _serviceColor(TxnService s) {
-    switch (s) {
-      case TxnService.sms:
-        return const Color(0xFF4F46E5);
-      case TxnService.whatsapp:
-        return const Color(0xFF059669);
-      case TxnService.rcs:
-        return const Color(0xFFDC2626);
-    }
-  }
-
-  IconData _serviceIcon(TxnService s) {
-    switch (s) {
-      case TxnService.sms:
-        return Icons.sms_rounded;
-      case TxnService.whatsapp:
-        return Icons.chat_bubble_rounded;
-      case TxnService.rcs:
-        return Icons.message_rounded;
+      default:
+        return _TypeConfig(
+          label: 'Transaction',
+          icon: Icons.receipt_long_rounded,
+          fg: c.textSecondary as Color,
+          bg: (c.textSecondary as Color).withOpacity(0.15),
+        );
     }
   }
 }
@@ -983,21 +833,32 @@ class _Pill extends StatelessWidget {
 // DETAIL SHEET
 // =========================
 class _TxnDetailSheet extends StatelessWidget {
-  final Transaction txn;
+  final TransactionDetailsModel txn;
   const _TxnDetailSheet({required this.txn});
+
+  String _dateTimeLabel(TransactionDetailsModel txn) {
+    final parts = <String>[
+      if (txn.date?.isNotEmpty == true) txn.date!,
+      if (txn.time?.isNotEmpty == true) txn.time!,
+    ];
+    return parts.isEmpty ? '--' : parts.join(', ');
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isDebit = txn.type == TxnType.debit;
-    final amountColor = isDebit
-        ? const Color(0xFFDC2626)
-        : const Color(0xFF059669);
+    final c = context.colors;
+    final type = txn.type?.toLowerCase().trim() ?? '';
+    final amount = txn.amount ?? 0;
+    final balanceBefore = txn.balanceBefore ?? 0;
+    final balanceAfter = txn.balanceAfter ?? 0;
+    final isDebit = type == 'debit';
+    final amountColor = isDebit ? c.error : c.green;
     final sign = isDebit ? '-' : '+';
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: c.bottomSheet,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
       child: Column(
@@ -1007,7 +868,7 @@ class _TxnDetailSheet extends StatelessWidget {
             width: 44,
             height: 4,
             decoration: BoxDecoration(
-              color: const Color(0xFFE2E8F0),
+              color: c.bottomSheetHandle,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1017,13 +878,13 @@ class _TxnDetailSheet extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Colors.black.withOpacity(0.55),
+              color: c.textSecondary,
               letterSpacing: 0.3,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            '$sign₹${txn.amount.toStringAsFixed(txn.amount < 1 ? 3 : 2)}',
+            '$sign₹${amount.toStringAsFixed(amount < 1 ? 3 : 2)}',
             style: TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.w700,
@@ -1033,97 +894,59 @@ class _TxnDetailSheet extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            txn.description,
+            txn.description?.isNotEmpty == true
+                ? txn.description!
+                : 'Transaction',
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF475569),
+              color: c.textSecondary,
             ),
           ),
           const SizedBox(height: 24),
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: c.surfaceHigh,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.black.withOpacity(0.04)),
+              border: Border.all(color: c.border),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
             child: Column(
               children: [
-                _DetailRow(label: 'Type', value: txn.type.name.toUpperCase()),
+                _DetailRow(
+                  label: 'Type',
+                  value: type.isNotEmpty ? type.toUpperCase() : '--',
+                ),
                 _DetailRow(
                   label: 'Service',
-                  value: txn.service.name.toUpperCase(),
+                  value: txn.service?.isNotEmpty == true
+                      ? txn.service!.toUpperCase()
+                      : '--',
                 ),
                 _DetailRow(
                   label: 'Balance Before',
-                  value: '₹${txn.balanceBefore.toStringAsFixed(2)}',
+                  value: '₹${balanceBefore.toStringAsFixed(2)}',
                 ),
                 _DetailRow(
                   label: 'Balance After',
-                  value: '₹${txn.balanceAfter.toStringAsFixed(2)}',
+                  value: '₹${balanceAfter.toStringAsFixed(2)}',
                   isStrong: true,
                 ),
-                if (txn.dltCharge != null)
+                if ((txn.dltCharge ?? 0) > 0)
                   _DetailRow(
                     label: 'DLT Charge',
                     value: '₹${txn.dltCharge!.toStringAsFixed(3)}',
                   ),
-                _DetailRow(
-                  label: 'Date & Time',
-                  value: DateFormat('d MMM yyyy, h:mm a').format(txn.createdAt),
-                ),
+                _DetailRow(label: 'Date & Time', value: _dateTimeLabel(txn)),
                 _DetailRow(
                   label: 'Transaction ID',
-                  value: txn.id,
+                  value: txn.sId ?? '--',
                   isLast: true,
                   mono: true,
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: BorderSide(color: Colors.black.withOpacity(0.1)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: const Icon(Icons.share_rounded, size: 16),
-                  label: const Text(
-                    'Share',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F172A),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: const Icon(Icons.download_rounded, size: 16),
-                  label: const Text(
-                    'Receipt',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -1147,35 +970,112 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : Border(bottom: BorderSide(color: Colors.black.withOpacity(0.05))),
+        border: isLast ? null : Border(bottom: BorderSide(color: c.border)),
       ),
       child: Row(
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12.5,
-              color: Color(0xFF64748B),
+              color: c.textSecondary,
               fontWeight: FontWeight.w500,
             ),
           ),
           const Spacer(),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              color: const Color(0xFF0F172A),
-              fontWeight: isStrong ? FontWeight.w700 : FontWeight.w600,
-              fontFamily: mono ? 'monospace' : null,
-              letterSpacing: mono ? 0.3 : 0,
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                color: c.textPrimary,
+                fontWeight: isStrong ? FontWeight.w700 : FontWeight.w600,
+                fontFamily: mono ? 'monospace' : null,
+                letterSpacing: mono ? 0.3 : 0,
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LoadingState extends StatelessWidget {
+  const _LoadingState();
+
+  @override
+  Widget build(BuildContext context) => Center(child: FullScreenLoader());
+}
+
+class _LoadMoreIndicator extends StatelessWidget {
+  const _LoadMoreIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 2, color: c.primary),
+        ),
+      ),
+    );
+  }
+}
+
+class _TransactionErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _TransactionErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline_rounded, color: c.error, size: 34),
+            const SizedBox(height: 12),
+            Text(
+              'Unable to load transactions',
+              style: TextStyle(
+                color: c.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: c.textSecondary, fontSize: 12.5),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: c.primary,
+                foregroundColor: c.onBrand,
+                elevation: 0,
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1189,6 +1089,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1197,28 +1098,28 @@ class _EmptyState extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: c.surfaceHigh,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.receipt_long_rounded,
-              color: Color(0xFF94A3B8),
+              color: c.textMuted,
               size: 28,
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'No transactions found',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF334155),
+              color: c.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Try changing your filters',
-            style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
+            style: TextStyle(fontSize: 12.5, color: c.textMuted),
           ),
         ],
       ),
