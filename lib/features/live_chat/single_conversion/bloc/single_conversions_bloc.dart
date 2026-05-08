@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:intl/intl.dart';
+import 'package:synqer_io/core/model/paginated_response.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/model/single_conversion_model.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/repository/single_conversion_repo.dart';
 
@@ -28,26 +29,28 @@ class SingleConversionsBloc
     try {
       emit(SingleConversionsLoading());
 
-      final firstResponse = await singleConversionRepo.fetchSingleConversion(
+      final latestMessages = await _fetchLatestMessages(
         customerMobile: event.customerMobile,
-        page: 1,
         limit: event.limit,
-      );
-
-      final lastPage = firstResponse.totalPages;
-
-      final latestMessages = await singleConversionRepo.fetchSingleConversion(
-        customerMobile: event.customerMobile,
-        page: lastPage,
-        limit: event.limit,
+        onFirstPage: (firstResponse) {
+          emit(
+            SingleConversionsLoaded(
+              conversions: firstResponse.data,
+              hasMore: firstResponse.totalPages > 1,
+              isRefreshing: firstResponse.totalPages > 1,
+              currentPage: firstResponse.page,
+              totalPages: firstResponse.totalPages,
+            ),
+          );
+        },
       );
 
       emit(
         SingleConversionsLoaded(
           conversions: latestMessages.data,
-          hasMore: lastPage > 1,
-          currentPage: lastPage,
-          totalPages: lastPage,
+          hasMore: latestMessages.page > 1,
+          currentPage: latestMessages.page,
+          totalPages: latestMessages.totalPages,
         ),
       );
     } catch (e) {
@@ -66,17 +69,8 @@ class SingleConversionsBloc
     try {
       emit(currentState.copyWith(isRefreshing: true));
 
-      final firstResponse = await singleConversionRepo.fetchSingleConversion(
+      final latestMessages = await _fetchLatestMessages(
         customerMobile: event.customerMobile,
-        page: 1,
-        limit: event.limit,
-      );
-
-      final lastPage = firstResponse.totalPages;
-
-      final latestMessages = await singleConversionRepo.fetchSingleConversion(
-        customerMobile: event.customerMobile,
-        page: lastPage,
         limit: event.limit,
       );
 
@@ -86,9 +80,9 @@ class SingleConversionsBloc
             latestMessages.data,
             currentState.conversions,
           ),
-          currentPage: lastPage,
-          totalPages: lastPage,
-          hasMore: lastPage > 1,
+          currentPage: latestMessages.page,
+          totalPages: latestMessages.totalPages,
+          hasMore: latestMessages.page > 1,
           isRefreshing: false,
           clearSendFailure: true,
         ),
@@ -145,11 +139,17 @@ class SingleConversionsBloc
     if (currentState is! SingleConversionsLoaded) return;
 
     final text = event.message.trim();
+    final hasFile = event.attachment != null && event.attachment!.isNotEmpty;
 
-    if (text.isEmpty) return;
+    if (text.isEmpty && !hasFile) return;
 
     final tempId = DateTime.now().microsecondsSinceEpoch.toString();
-    final localMessage = _createLocalMessage(tempId: tempId, message: text);
+    final localMessage = _createLocalMessage(
+      tempId: tempId,
+      message: text,
+      messageType: event.messageType,
+      attachment: hasFile ? event.attachment : null,
+    );
 
     emit(
       currentState.copyWith(
@@ -164,19 +164,33 @@ class SingleConversionsBloc
         customerMobile: event.customerMobile,
         message: text,
         messageType: event.messageType,
+        file: event.attachment,
       );
 
       final isSuccess = response is Map && response['success'] == true;
 
       if (!isSuccess) {
-        final message = response is Map
-            ? response['message']?.toString()
-            : 'Failed to send message';
+        String message;
+
+        if (response is Map) {
+          final rawMessage = response['message']?.toString() ?? '';
+
+          if (rawMessage.contains(
+            'The 24-hour customer service window has expired',
+          )) {
+            message =
+                'You can’t reply to this chat right now because the 24-hour reply window has expired. Ask the customer to send a new message to continue.';
+          } else {
+            message = rawMessage;
+          }
+        } else {
+          message = 'Failed to send message';
+        }
 
         _removeLocalMessageAndEmitFailure(
           emit,
           tempId: tempId,
-          message: message ?? 'Failed to send message',
+          message: message,
         );
 
         return;
@@ -200,24 +214,15 @@ class SingleConversionsBloc
     Emitter<SingleConversionsState> emit, {
     required String customerMobile,
     required String sentTempId,
-    int limit = 50,
+    int limit = 25,
   }) async {
     final currentState = state;
 
     if (currentState is! SingleConversionsLoaded) return;
 
     try {
-      final firstResponse = await singleConversionRepo.fetchSingleConversion(
+      final latestMessages = await _fetchLatestMessages(
         customerMobile: customerMobile,
-        page: 1,
-        limit: limit,
-      );
-
-      final lastPage = firstResponse.totalPages;
-
-      final latestMessages = await singleConversionRepo.fetchSingleConversion(
-        customerMobile: customerMobile,
-        page: lastPage,
         limit: limit,
       );
 
@@ -228,9 +233,9 @@ class SingleConversionsBloc
             currentState.conversions,
             excludeTempIds: {sentTempId},
           ),
-          hasMore: lastPage > 1,
-          currentPage: lastPage,
-          totalPages: lastPage,
+          hasMore: latestMessages.page > 1,
+          currentPage: latestMessages.page,
+          totalPages: latestMessages.totalPages,
           isSendingMessage: false,
           clearSendFailure: true,
         ),
@@ -250,6 +255,33 @@ class SingleConversionsBloc
         ),
       );
     }
+  }
+
+  Future<PaginatedResponse<SingleConversionModel>> _fetchLatestMessages({
+    required String customerMobile,
+    required int limit,
+    void Function(PaginatedResponse<SingleConversionModel> firstResponse)?
+    onFirstPage,
+  }) async {
+    final firstResponse = await singleConversionRepo.fetchSingleConversion(
+      customerMobile: customerMobile,
+      page: 1,
+      limit: limit,
+    );
+
+    onFirstPage?.call(firstResponse);
+
+    final lastPage = firstResponse.totalPages;
+
+    if (lastPage <= 1) {
+      return firstResponse;
+    }
+
+    return singleConversionRepo.fetchSingleConversion(
+      customerMobile: customerMobile,
+      page: lastPage,
+      limit: limit,
+    );
   }
 
   void _removeLocalMessageAndEmitFailure(
@@ -276,17 +308,20 @@ class SingleConversionsBloc
   SingleConversionModel _createLocalMessage({
     required String tempId,
     required String message,
+    String messageType = 'text',
+    String? attachment,
   }) {
     final now = DateTime.now();
 
     return SingleConversionModel(
       tempId: tempId,
-      message: message,
+      message: message.isNotEmpty ? message : null,
+      mediaUrl: attachment,
       direction: 'outbound',
       isLocal: true,
       isFailed: false,
       status: MessageStatus.sent,
-      messageType: MessageType.text,
+      messageType: getMessageType(messageType),
       createDate: DateFormat('dd MMM yyyy').format(now),
       createTime: DateFormat('h:mm a').format(now),
       isRead: false,

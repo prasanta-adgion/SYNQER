@@ -9,6 +9,7 @@ import 'package:synqer_io/core/theme/app_colors.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/features/dashboard/widgets/header_section.dart';
 import 'package:synqer_io/features/live_chat/live_conversions/live_convertsions_screen.dart';
+import 'package:synqer_io/features/manage_contacts/contacts_screen.dart';
 
 class ActivityItem {
   final String title;
@@ -45,7 +46,7 @@ class _MainScreenState extends State<MainScreen>
     AllLeadsPage(),
     // ConversionsPage(),
     LiveConversionsScreen(),
-    ContactPage(),
+    ContactsScreen(),
   ];
 
   @override
@@ -250,6 +251,9 @@ class _MainScreenState extends State<MainScreen>
                             ? c.primary.withOpacity(0.15)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isActive ? c.primary : Colors.transparent,
+                        ),
                       ),
                       child: Icon(
                         item.icon,

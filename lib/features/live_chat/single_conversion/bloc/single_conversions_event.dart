@@ -1,3 +1,5 @@
+// ignore_for_file: must_be_immutable
+
 part of 'single_conversions_bloc.dart';
 
 sealed class SingleConversionsEvent extends Equatable {
@@ -13,7 +15,7 @@ class FetchSingleConversionsEvent extends SingleConversionsEvent {
 
   const FetchSingleConversionsEvent({
     required this.customerMobile,
-    this.limit = 50,
+    this.limit = 25,
   });
 
   @override
@@ -26,7 +28,7 @@ class LoadMoreSingleConversionsEvent extends SingleConversionsEvent {
 
   const LoadMoreSingleConversionsEvent({
     required this.customerMobile,
-    this.limit = 50,
+    this.limit = 25,
   });
 
   @override
@@ -39,7 +41,7 @@ class SilentRefreshSingleConversionsEvent extends SingleConversionsEvent {
 
   const SilentRefreshSingleConversionsEvent({
     required this.customerMobile,
-    this.limit = 50,
+    this.limit = 25,
   });
 
   @override

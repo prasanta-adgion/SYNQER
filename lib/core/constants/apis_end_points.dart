@@ -17,4 +17,6 @@ class APIsEndPoints {
   static const String getProfile = "user/api/v1/profile";
 
   static const String getTransactions = "user/api/v1/transactions";
+
+  static const String getContacts = "user/api/v1/contacts";
 }

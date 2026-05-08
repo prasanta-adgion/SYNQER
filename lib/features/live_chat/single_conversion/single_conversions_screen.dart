@@ -17,6 +17,8 @@ import 'package:synqer_io/features/live_chat/single_conversion/widgets/chat_appb
 import 'package:synqer_io/features/live_chat/single_conversion/widgets/media_preview_screen.dart';
 import 'package:video_player/video_player.dart';
 
+const int _messagesPageLimit = 25;
+
 class SingleConversionsBlocProviderWrapper extends StatelessWidget {
   final String customerNumber, customerName;
 
@@ -35,7 +37,7 @@ class SingleConversionsBlocProviderWrapper extends StatelessWidget {
           )..add(
             FetchSingleConversionsEvent(
               customerMobile: customerNumber,
-              limit: 50,
+              limit: _messagesPageLimit,
             ),
           ),
       child: SingleChat(
@@ -98,7 +100,7 @@ class _SingleChatState extends State<SingleChat> {
     context.read<SingleConversionsBloc>().add(
       LoadMoreSingleConversionsEvent(
         customerMobile: widget.customerNumber,
-        limit: 50,
+        limit: _messagesPageLimit,
       ),
     );
   }
@@ -126,6 +128,31 @@ class _SingleChatState extends State<SingleChat> {
       ),
     );
 
+    _scrollToBottom();
+  }
+
+  Future<void> sendMediaMessage(AppPickedFile file, String caption) async {
+    if (!context.mounted) return;
+
+    final messageType = file.isImage
+        ? 'image'
+        : file.isVideo
+        ? 'video'
+        : 'document';
+
+    context.read<SingleConversionsBloc>().add(
+      SendSingleMessageEvent(
+        customerMobile: widget.customerNumber,
+        message: caption,
+        messageType: messageType,
+        attachment: file.path,
+      ),
+    );
+
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -234,7 +261,7 @@ class _SingleChatState extends State<SingleChat> {
                                 context.read<SingleConversionsBloc>().add(
                                   FetchSingleConversionsEvent(
                                     customerMobile: widget.customerNumber,
-                                    limit: 50,
+                                    limit: _messagesPageLimit,
                                   ),
                                 );
                               },
@@ -273,8 +300,7 @@ class _SingleChatState extends State<SingleChat> {
                         );
                       }
 
-                      // PERFORMANCE FIX
-                      final reversedChats = state.conversions.reversed.toList();
+                      final chats = state.conversions;
 
                       return ListView.builder(
                         controller: _scrollController,
@@ -283,12 +309,10 @@ class _SingleChatState extends State<SingleChat> {
 
                         padding: const EdgeInsets.symmetric(vertical: 10),
 
-                        itemCount:
-                            reversedChats.length +
-                            (state.isLoadingMore ? 1 : 0),
+                        itemCount: chats.length + (state.isLoadingMore ? 1 : 0),
 
                         itemBuilder: (context, index) {
-                          if (index >= reversedChats.length) {
+                          if (index >= chats.length) {
                             return Padding(
                               padding: const EdgeInsets.all(16),
                               child: Center(
@@ -301,7 +325,8 @@ class _SingleChatState extends State<SingleChat> {
                             );
                           }
 
-                          final chat = reversedChats[index];
+                          final chatIndex = chats.length - 1 - index;
+                          final chat = chats[chatIndex];
 
                           final isUser =
                               chat.direction?.toLowerCase().trim() ==
@@ -311,8 +336,8 @@ class _SingleChatState extends State<SingleChat> {
 
                           String? previousDate;
 
-                          if (index < reversedChats.length - 1) {
-                            previousDate = reversedChats[index + 1].createDate;
+                          if (chatIndex > 0) {
+                            previousDate = chats[chatIndex - 1].createDate;
                           }
 
                           final showDateSeparator =
@@ -363,14 +388,7 @@ class _SingleChatState extends State<SingleChat> {
                             MaterialPageRoute(
                               builder: (_) => MediaPreviewScreen(
                                 file: file,
-
-                                onSend: (pickedFile, caption) {
-                                  debugPrint(pickedFile.name);
-
-                                  debugPrint(caption);
-
-                                  // send message api
-                                },
+                                onSend: sendMediaMessage,
                               ),
                             ),
                           );
@@ -607,13 +625,13 @@ class _VideoPlayerBubbleState extends State<VideoPlayerBubble> {
   ChewieController? _chewieController;
   bool _isLoading = false;
   bool _hasError = false;
+  bool _hasStarted = false;
 
   String get _mediaUrl => widget.chat.mediaUrl?.trim() ?? '';
 
   @override
   void initState() {
     super.initState();
-    _initializeVideo();
   }
 
   @override
@@ -622,7 +640,9 @@ class _VideoPlayerBubbleState extends State<VideoPlayerBubble> {
 
     if (oldWidget.chat.mediaUrl?.trim() != _mediaUrl) {
       _disposeControllers();
-      _initializeVideo();
+      _hasStarted = false;
+      _hasError = false;
+      _isLoading = false;
     }
   }
 
@@ -632,6 +652,7 @@ class _VideoPlayerBubbleState extends State<VideoPlayerBubble> {
 
     if (mediaUrl.isEmpty || uri == null || !uri.hasScheme) {
       setState(() {
+        _hasStarted = true;
         _isLoading = false;
         _hasError = true;
       });
@@ -639,6 +660,7 @@ class _VideoPlayerBubbleState extends State<VideoPlayerBubble> {
     }
 
     setState(() {
+      _hasStarted = true;
       _isLoading = true;
       _hasError = false;
     });
@@ -708,7 +730,9 @@ class _VideoPlayerBubbleState extends State<VideoPlayerBubble> {
           child: SizedBox(
             width: 240,
             height: 300,
-            child: _isLoading || _chewieController == null
+            child: !_hasStarted
+                ? _VideoPlayPlaceholder(title: title, onTap: _initializeVideo)
+                : _isLoading || _chewieController == null
                 ? Container(
                     color: Colors.black87,
                     alignment: Alignment.center,
@@ -733,6 +757,60 @@ class _VideoPlayerBubbleState extends State<VideoPlayerBubble> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _VideoPlayPlaceholder extends StatelessWidget {
+  final String title;
+  final VoidCallback onTap;
+
+  const _VideoPlayPlaceholder({required this.title, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+
+    return Material(
+      color: Colors.black87,
+      child: InkWell(
+        onTap: onTap,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Center(
+              child: Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: c.green.withOpacity(0.9),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  color: c.onBrand,
+                  size: 38,
+                ),
+              ),
+            ),
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -900,10 +978,9 @@ class MessageInputBar extends StatelessWidget {
                     style: TextStyle(color: c.textPrimary),
 
                     decoration: InputDecoration(
-                      hintText: "Message",
+                      hintText: "Write message...",
 
                       hintStyle: TextStyle(color: c.textMuted),
-
                       border: InputBorder.none,
 
                       contentPadding: const EdgeInsets.symmetric(

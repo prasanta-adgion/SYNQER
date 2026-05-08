@@ -35,7 +35,6 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           title: 'Synqer',
 
-          // ── Theme from ThemeScope ─────────────────
           theme: theme,
 
           builder: (context, child) {

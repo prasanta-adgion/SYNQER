@@ -8,6 +8,8 @@ import 'package:synqer_io/core/widgets/app_popover_dailog.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/bloc/single_conversions_bloc.dart';
 import 'package:synqer_io/features/live_chat/save_contact/save_contact_screen.dart';
 
+const int _messagesPageLimit = 25;
+
 class ChatAppbar extends StatelessWidget {
   final String customerNumber;
   final String customerName;
@@ -99,7 +101,7 @@ class ChatAppbar extends StatelessWidget {
                             context.read<SingleConversionsBloc>().add(
                               SilentRefreshSingleConversionsEvent(
                                 customerMobile: customerNumber,
-                                limit: 50,
+                                limit: _messagesPageLimit,
                               ),
                             );
                           },
@@ -179,7 +181,7 @@ Widget _buildMoreOptions(BuildContext context, String number, AppColors c) {
                 context.read<SingleConversionsBloc>().add(
                   SilentRefreshSingleConversionsEvent(
                     customerMobile: number,
-                    limit: 50,
+                    limit: _messagesPageLimit,
                   ),
                 );
               },

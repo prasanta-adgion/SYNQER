@@ -39,6 +39,15 @@ class AppColors {
   final Color inputIcon;
   final Color inputIconFocus;
 
+  // ─── Contact Screen
+  final Color successSoft;
+  final Color warning;
+  final Color warningSoft;
+  final Color dangerSoft;
+
+  final Color accentSoft;
+  final Color divider;
+
   const AppColors({
     required this.primary,
     required this.secondary,
@@ -67,6 +76,15 @@ class AppColors {
     required this.inputBorderFocus,
     required this.inputIcon,
     required this.inputIconFocus,
+
+    // ─── Contact Screen
+    required this.successSoft,
+    required this.warning,
+    required this.warningSoft,
+    required this.dangerSoft,
+
+    required this.accentSoft,
+    required this.divider,
   });
 
   // ─── Dark Theme ─────────────────────────────────────────────
@@ -105,6 +123,18 @@ class AppColors {
     inputBorderFocus: const Color(0xFF301BF3),
     inputIcon: Colors.white.withOpacity(0.45),
     inputIconFocus: const Color(0xFF301BF3),
+
+    // ─── Contact Screen
+    successSoft: const Color(0x2627AE60),
+
+    warning: const Color(0xFFFBBF24),
+    warningSoft: const Color(0x26FBBF24),
+
+    dangerSoft: const Color(0x26FF5252),
+
+    accentSoft: const Color(0x26301BF3),
+
+    divider: Colors.white.withOpacity(0.06),
   );
 
   // ─── Light Theme ────────────────────────────────────────────
@@ -143,5 +173,17 @@ class AppColors {
     inputBorderFocus: const Color(0xFF301BF3),
     inputIcon: Colors.black.withOpacity(0.45),
     inputIconFocus: const Color(0xFF301BF3),
+
+    // ─── Contact Screen
+    successSoft: const Color(0x261F8F4D),
+
+    warning: const Color(0xFFF59E0B),
+    warningSoft: const Color(0x26F59E0B),
+
+    dangerSoft: const Color(0x26E53935),
+
+    accentSoft: const Color(0x26301BF3),
+
+    divider: Colors.black.withOpacity(0.05),
   );
 }

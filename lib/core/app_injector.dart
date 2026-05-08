@@ -2,6 +2,7 @@ import 'package:synqer_io/core/network/dio_methods_service.dart';
 import 'package:synqer_io/features/live_chat/live_conversions/repository/conversions_repo.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/repository/single_conversion_repo.dart';
 import 'package:synqer_io/features/live_chat/save_contact/repository/get_groups_repo.dart';
+import 'package:synqer_io/features/manage_contacts/repository/manage_contacts_repo.dart';
 import 'package:synqer_io/features/profile/repository/profile_repo.dart';
 import 'package:synqer_io/features/transaction_screen/repository/transaction_get_repo.dart';
 import 'package:synqer_io/features/user_login/repo/login_repo.dart';
@@ -26,6 +27,11 @@ class AppInjector {
 
   //get transactions
   static final TransactionGetRepo transactionsRepo = TransactionGetRepo(
+    dio: dio,
+  );
+
+  //get contacts
+  static final ManageContactsRepo getContactsRepo = ManageContactsRepo(
     dio: dio,
   );
 }

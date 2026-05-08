@@ -49,8 +49,8 @@ class HeaderSection extends StatelessWidget {
           ),
           // ── Theme toggle ────────────────────────────────────────────────
           _ThemeToggleButton(),
-          const SizedBox(width: 10),
-          const _IconBtn(icon: Icons.notifications_none_rounded, badge: true),
+          // const SizedBox(width: 10),
+          // const _IconBtn(icon: Icons.notifications_none_rounded, badge: true),
           const SizedBox(width: 10),
           InkWell(
             onTap: () {

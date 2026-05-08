@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:synqer_io/core/theme/app_colors.dart';
+import 'package:synqer_io/core/theme/theme_scope.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String? title;
@@ -39,6 +41,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return AppBar(
       automaticallyImplyLeading: false,
 
@@ -46,7 +49,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
       scrolledUnderElevation: 0,
 
-      backgroundColor: backgroundColor ?? Colors.white,
+      backgroundColor: backgroundColor ?? c.surface,
 
       toolbarHeight: 72,
 
@@ -55,10 +58,18 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       title: Row(
         children: [
           if (showBackButton) ...[
-            _HeaderIconButton(
+            _GlassBtn(
               icon: Icons.arrow_back_ios_new_rounded,
 
-              onTap: onBack ?? () => Navigator.pop(context),
+              c: c,
+
+              onTap: (_) {
+                if (onBack != null) {
+                  onBack!();
+                } else {
+                  Navigator.pop(context);
+                }
+              },
             ),
 
             const SizedBox(width: 12),
@@ -81,7 +92,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: titleColor ?? const Color(0xFF0F172A),
+
+                    color: titleColor ?? c.textPrimary,
 
                     letterSpacing: -0.4,
                   ),
@@ -100,7 +112,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                     style: TextStyle(
                       fontSize: 12.5,
 
-                      color: subtitleColor ?? const Color(0xFF64748B),
+                      color: subtitleColor ?? c.textSecondary,
 
                       fontWeight: FontWeight.w500,
                     ),
@@ -120,35 +132,39 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(72);
 }
 
-class _HeaderIconButton extends StatelessWidget {
+class _GlassBtn extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onTap;
 
-  const _HeaderIconButton({required this.icon, required this.onTap});
+  // FIXED
+  final Function(BuildContext buttonContext) onTap;
+
+  final AppColors c;
+
+  const _GlassBtn({required this.icon, required this.onTap, required this.c});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
+    return Builder(
+      builder: (buttonContext) {
+        return GestureDetector(
+          onTap: () => onTap(buttonContext),
 
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 38,
+            height: 38,
 
-        side: BorderSide(color: Colors.black.withOpacity(0.06)),
-      ),
+            decoration: BoxDecoration(
+              color: c.surface,
 
-      child: InkWell(
-        onTap: onTap,
+              borderRadius: BorderRadius.circular(10),
 
-        borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: c.border),
+            ),
 
-        child: SizedBox(
-          width: 40,
-          height: 40,
-
-          child: Icon(icon, size: 18, color: const Color(0xFF334155)),
-        ),
-      ),
+            child: Icon(icon, color: c.textSecondary, size: 17),
+          ),
+        );
+      },
     );
   }
 }

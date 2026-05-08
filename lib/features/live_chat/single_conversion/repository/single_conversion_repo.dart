@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:synqer_io/core/constants/apis_end_points.dart';
 import 'package:synqer_io/core/model/paginated_response.dart';
@@ -47,15 +49,28 @@ class SingleConversionRepo {
     required String messageType,
     String? file,
   }) async {
+    if (file != null && file.isNotEmpty) {
+      final res = await dio.postMultipart(
+        APIsEndPoints.sendMessage,
+        fileField: 'file',
+        files: [File(file)],
+        fields: {
+          'mobile': customerMobile,
+          'message_type': messageType,
+          if (message.isNotEmpty) 'message': message,
+        },
+      );
+      debugPrint(res.toString());
+      return res;
+    }
+
     final res = await dio.post(APIsEndPoints.sendMessage, requiresAuth: true, {
       'mobile': customerMobile,
       'message_type': messageType,
       'message': message,
-      'file': file,
     });
 
     debugPrint(res.toString());
-
     return res;
   }
 }

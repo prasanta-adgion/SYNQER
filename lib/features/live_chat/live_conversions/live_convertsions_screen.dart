@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:synqer_io/core/app_injector.dart';
@@ -55,6 +56,9 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
   final _onlyUnreadNotifier = ValueNotifier<bool>(false);
   final _currentTimeNotifier = ValueNotifier<String>('');
 
+  /// Controls animated show/hide of the tab bar on scroll
+  final ValueNotifier<bool> _showTabBar = ValueNotifier(true);
+
   @override
   void initState() {
     super.initState();
@@ -92,6 +96,14 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
     }
   }
 
+  void onScrollDirectionChanged(ScrollDirection direction) {
+    if (direction == ScrollDirection.reverse && _showTabBar.value) {
+      _showTabBar.value = false;
+    } else if (direction == ScrollDirection.forward && !_showTabBar.value) {
+      _showTabBar.value = true;
+    }
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
@@ -102,6 +114,7 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
     _onlyUnreadNotifier.dispose();
     _currentTimeNotifier.dispose();
     _scrollController.dispose();
+    _showTabBar.dispose();
     super.dispose();
   }
 
@@ -213,32 +226,61 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
         ),
 
         const SizedBox(height: 12),
-
         ValueListenableBuilder<bool>(
-          valueListenable: _onlyUnreadNotifier,
-          builder: (context, onlyUnread, _) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  _FilterTab(
-                    title: 'All',
-                    selected: !onlyUnread,
-                    onTap: () {
-                      _onlyUnreadNotifier.value = false;
-                      _dispatchFetch();
-                    },
-                  ),
-                  const SizedBox(width: 10),
-                  _FilterTab(
-                    title: 'Unread',
-                    selected: onlyUnread,
-                    onTap: () {
-                      _onlyUnreadNotifier.value = true;
-                      _dispatchFetch();
-                    },
-                  ),
-                ],
+          valueListenable: _showTabBar,
+
+          builder: (context, visible, _) {
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+
+              height: visible ? 60 : 0,
+
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+
+                opacity: visible ? 1 : 0,
+
+                child: visible
+                    ? ValueListenableBuilder<bool>(
+                        valueListenable: _onlyUnreadNotifier,
+
+                        builder: (context, onlyUnread, _) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+
+                            child: Row(
+                              children: [
+                                _FilterTab(
+                                  title: 'All',
+
+                                  selected: !onlyUnread,
+
+                                  onTap: () {
+                                    _onlyUnreadNotifier.value = false;
+
+                                    _dispatchFetch();
+                                  },
+                                ),
+
+                                const SizedBox(width: 10),
+
+                                _FilterTab(
+                                  title: 'Unread',
+
+                                  selected: onlyUnread,
+
+                                  onTap: () {
+                                    _onlyUnreadNotifier.value = true;
+
+                                    _dispatchFetch();
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      )
+                    : const SizedBox.shrink(),
               ),
             );
           },
@@ -279,37 +321,44 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
                         );
                       }
 
-                      return RefreshIndicator(
-                        onRefresh: _onRefresh,
-                        color: c.primary,
-                        backgroundColor: c.surface,
-                        child: ListView.builder(
-                          controller: _scrollController,
-                          physics: const AlwaysScrollableScrollPhysics(
-                            parent: BouncingScrollPhysics(),
-                          ),
-                          padding: const EdgeInsets.only(bottom: 100),
-                          itemCount: state.isLoadingMore
-                              ? conversions.length + 1
-                              : conversions.length,
-                          itemBuilder: (_, i) {
-                            if (i >= conversions.length) {
-                              return const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Center(
-                                  child: CircularProgressIndicator(),
-                                ),
+                      return NotificationListener<UserScrollNotification>(
+                        onNotification: (notification) {
+                          onScrollDirectionChanged(notification.direction);
+
+                          return false;
+                        },
+                        child: RefreshIndicator(
+                          onRefresh: _onRefresh,
+                          color: c.primary,
+                          backgroundColor: c.surface,
+                          child: ListView.builder(
+                            controller: _scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(
+                              parent: BouncingScrollPhysics(),
+                            ),
+                            padding: const EdgeInsets.only(bottom: 100),
+                            itemCount: state.isLoadingMore
+                                ? conversions.length + 1
+                                : conversions.length,
+                            itemBuilder: (_, i) {
+                              if (i >= conversions.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+                              }
+
+                              final chat = conversions[i];
+
+                              return ConversionsCardTile(
+                                chat: chat,
+                                onTap: () => _onTileTap(chat),
+                                onCallTap: () => _onCallTap(chat),
                               );
-                            }
-
-                            final chat = conversions[i];
-
-                            return ConversionsCardTile(
-                              chat: chat,
-                              onTap: () => _onTileTap(chat),
-                              onCallTap: () => _onCallTap(chat),
-                            );
-                          },
+                            },
+                          ),
                         ),
                       );
                     },
