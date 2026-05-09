@@ -381,7 +381,7 @@ class _SingleChatState extends State<SingleChat> {
                       controller: _msgController,
                       onSend: () => sendMessage('text'),
                       onFilePicked: (file) async {
-                        if (file != null && context.mounted) {
+                        if (context.mounted) {
                           Navigator.push(
                             context,
 

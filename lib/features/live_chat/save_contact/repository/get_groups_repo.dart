@@ -36,18 +36,4 @@ class GetGroupsRepo {
       hasMore: hasMore,
     );
   }
-
-  Future<dynamic> addContact({
-    required String fullName,
-    required String groupName,
-    required String phone,
-  }) async {
-    final responseData = await dio.post(APIsEndPoints.addContacts, {
-      "fullName": fullName.toString().trim(),
-      "groupName": groupName.toString().trim(),
-      "mobileNumber": phone,
-    });
-
-    return responseData;
-  }
 }

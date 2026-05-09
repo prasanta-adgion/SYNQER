@@ -5,10 +5,12 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import 'package:synqer_io/core/model/navbar_item_model.dart';
 
 import 'package:synqer_io/core/theme/app_colors.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/utils/app_configarations.dart';
+import 'package:synqer_io/features/all_leads/leads_screen.dart';
 import 'package:synqer_io/features/bulk_sms/bulk_sms_screen.dart';
 import 'package:synqer_io/features/dashboard/widgets/header_section.dart';
 import 'package:synqer_io/features/live_chat/live_conversions/live_convertsions_screen.dart';
@@ -41,19 +43,12 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen>
     with SingleTickerProviderStateMixin {
-  int _currentIndex = 0;
-
-  final List<Widget> _pages = const [
-    DashboardPage(),
-    AllLeadsPage(),
-    LiveConversionsScreen(),
-    ContactsScreen(),
-  ];
-
+  final ValueNotifier<int> _currentIndexNotifier = ValueNotifier(0);
   final ValueNotifier<bool> _fabNotifier = ValueNotifier(false);
 
   @override
   void dispose() {
+    _currentIndexNotifier.dispose();
     _fabNotifier.dispose();
     super.dispose();
   }
@@ -71,7 +66,11 @@ class _MainScreenState extends State<MainScreen>
         builder: (context, fabOpen, _) {
           return Stack(
             children: [
-              _pages[_currentIndex],
+              ValueListenableBuilder<int>(
+                valueListenable: _currentIndexNotifier,
+                builder: (context, currentIndex, _) =>
+                    _pageForIndex(currentIndex),
+              ),
 
               if (fabOpen)
                 Positioned.fill(
@@ -161,6 +160,14 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
+  Widget _pageForIndex(int index) {
+    return switch (index) {
+      2 => const LiveConversionsScreen(),
+      3 => const ContactsScreen(),
+      _ => const DashboardPage(),
+    };
+  }
+
   SpeedDialChild _buildDialChild({
     required BuildContext context,
     required AppColors c,
@@ -234,84 +241,93 @@ class _MainScreenState extends State<MainScreen>
 
   Widget _buildBottomNav(AppColors c) {
     const items = [
-      _NavItem(icon: Icons.dashboard_outlined, label: 'Dashboard'),
-      _NavItem(icon: Icons.people_outline_rounded, label: 'Leads'),
-      _NavItem(icon: Icons.trending_up_rounded, label: 'Conversions'),
-      _NavItem(icon: Icons.contacts_rounded, label: 'Contacts'),
+      NavbarItem(icon: Icons.dashboard_outlined, label: 'Dashboard'),
+      NavbarItem(icon: Icons.people_outline_rounded, label: 'Leads'),
+      NavbarItem(icon: Icons.trending_up_rounded, label: 'Conversions'),
+      NavbarItem(icon: Icons.contacts_rounded, label: 'Contacts'),
     ];
 
     return SafeArea(
-      child: Container(
-        height: 68,
-        decoration: BoxDecoration(
-          color: c.surface,
-          border: Border(top: BorderSide(color: c.border, width: 1)),
-        ),
-        child: Row(
-          children: items.asMap().entries.map((entry) {
-            final i = entry.key;
-            final item = entry.value;
-            final isActive = _currentIndex == i;
-            return Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  // if (_fabOpen) _toggleFab();
-                  if (_fabNotifier.value) {
-                    _fabNotifier.value = false;
-                  }
-                  setState(() => _currentIndex = i);
-                },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.all(7),
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? c.primary.withOpacity(0.15)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isActive ? c.primary : Colors.transparent,
+      child: ValueListenableBuilder<int>(
+        valueListenable: _currentIndexNotifier,
+        builder: (context, currentIndex, _) => Container(
+          height: 68,
+          decoration: BoxDecoration(
+            color: c.surface,
+            border: Border(top: BorderSide(color: c.border, width: 1)),
+          ),
+          child: Row(
+            children: items.asMap().entries.map((entry) {
+              final i = entry.key;
+              final item = entry.value;
+              final isActive = currentIndex == i;
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (_fabNotifier.value) {
+                      _fabNotifier.value = false;
+                    }
+                    if (item.label == 'Leads') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LeadsScreen()),
+                      );
+                      return;
+                    }
+                    _currentIndexNotifier.value = i;
+                  },
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? c.primary.withOpacity(0.15)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isActive ? c.primary : Colors.transparent,
+                          ),
+                        ),
+                        child: Icon(
+                          item.icon,
+                          size: 21,
+                          color: isActive ? c.primary : c.textSecondary,
                         ),
                       ),
-                      child: Icon(
-                        item.icon,
-                        size: 21,
-                        color: isActive ? c.primary : c.textSecondary,
+                      const SizedBox(height: 3),
+                      AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 200),
+                        style: TextStyle(
+                          color: isActive ? c.primary : c.textSecondary,
+                          fontSize: 10,
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.w400,
+                          letterSpacing: 0.1,
+                        ),
+                        child: Text(item.label),
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 200),
-                      style: TextStyle(
-                        color: isActive ? c.primary : c.textSecondary,
-                        fontSize: 10,
-                        fontWeight: isActive
-                            ? FontWeight.w700
-                            : FontWeight.w400,
-                        letterSpacing: 0.1,
-                      ),
-                      child: Text(item.label),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }).toList(),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );
   }
 }
 
-class _NavItem {
-  final IconData icon;
-  final String label;
-  const _NavItem({required this.icon, required this.label});
-}
+// class _NavItem {
+//   final IconData icon;
+//   final String label;
+//   const _NavItem({required this.icon, required this.label});
+// }
 
 String _greeting() {
   final h = DateTime.now().hour;
@@ -379,33 +395,6 @@ class _SectionTitle extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _Badge({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-        ),
       ),
     );
   }
@@ -1070,216 +1059,6 @@ class _ActivityTile extends StatelessWidget {
             style: TextStyle(color: c.textSecondary, fontSize: 11),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ALL LEADS PAGE
-// ─────────────────────────────────────────────────────────────────────────────
-
-class AllLeadsPage extends StatelessWidget {
-  const AllLeadsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-
-    const leads = [
-      {
-        'name': 'Ananya Sharma',
-        'phone': '+91 98765 43210',
-        'tag': 'Hot',
-        'time': '2h ago',
-      },
-      {
-        'name': 'Rohan Verma',
-        'phone': '+91 87654 32109',
-        'tag': 'Warm',
-        'time': '5h ago',
-      },
-      {
-        'name': 'Priya Nair',
-        'phone': '+91 76543 21098',
-        'tag': 'Cold',
-        'time': '1d ago',
-      },
-      {
-        'name': 'Karan Mehta',
-        'phone': '+91 65432 10987',
-        'tag': 'Hot',
-        'time': '1d ago',
-      },
-      {
-        'name': 'Sneha Iyer',
-        'phone': '+91 54321 09876',
-        'tag': 'Warm',
-        'time': '2d ago',
-      },
-      {
-        'name': 'Amit Patel',
-        'phone': '+91 43210 98765',
-        'tag': 'Cold',
-        'time': '3d ago',
-      },
-    ];
-
-    return Column(
-      children: [
-        HeaderSection(
-          title: 'All Leads',
-          subtitle: '${leads.length} total contacts',
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: c.surface,
-              borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: c.border),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.search_rounded, color: c.textSecondary, size: 18),
-                const SizedBox(width: 10),
-                Text(
-                  'Search leads...',
-                  style: TextStyle(color: c.textSecondary, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 34,
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            children: const [
-              _FilterChip(label: 'All', selected: true),
-              _FilterChip(label: 'Hot'),
-              _FilterChip(label: 'Warm'),
-              _FilterChip(label: 'Cold'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            physics: const BouncingScrollPhysics(),
-            itemCount: leads.length,
-            itemBuilder: (ctx, i) {
-              final l = leads[i];
-              final tagColor = l['tag'] == 'Hot'
-                  ? c.error
-                  : l['tag'] == 'Warm'
-                  ? c.primary
-                  : c.textSecondary;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 9),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: c.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: c.border),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: c.surfaceHigh,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: c.border),
-                      ),
-                      child: Center(
-                        child: Text(
-                          (l['name'] as String)[0],
-                          style: TextStyle(
-                            color: c.textPrimary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l['name']!,
-                            style: TextStyle(
-                              color: c.textPrimary,
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            l['phone']!,
-                            style: TextStyle(
-                              color: c.textSecondary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        _Badge(label: l['tag']!, color: tagColor),
-                        const SizedBox(height: 5),
-                        Text(
-                          l['time']!,
-                          style: TextStyle(
-                            color: c.textSecondary,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  const _FilterChip({required this.label, this.selected = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: BoxDecoration(
-        color: selected ? c.primary : c.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: selected ? c.primary : c.border),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: selected ? c.onBrand : c.textSecondary,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }

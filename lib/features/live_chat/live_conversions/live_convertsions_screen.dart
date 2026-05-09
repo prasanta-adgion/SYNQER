@@ -200,16 +200,23 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
 
     return Column(
       children: [
-        ValueListenableBuilder<String>(
-          valueListenable: _currentTimeNotifier,
-          builder: (context, currentTime, _) {
-            // return _ConversionsHeader(
-            //   title: 'Live Conversations',
-            //   subtitle: 'Recent customer activity',
-            //   currentTime: currentTime,
-            // );
-
-            return HeaderSection(title: 'Live Conversations', subtitle: '');
+        BlocBuilder<LiveConvertsionsBloc, LiveConvertsionsState>(
+          buildWhen: (prev, curr) =>
+              (prev is LiveConvertsionsLoaded) !=
+                  (curr is LiveConvertsionsLoaded) ||
+              (prev is LiveConvertsionsLoaded &&
+                  curr is LiveConvertsionsLoaded &&
+                  prev.conversions.length != curr.conversions.length),
+          builder: (context, state) {
+            final count = state is LiveConvertsionsLoaded
+                ? state.conversions.length
+                : null;
+            return HeaderSection(
+              title: 'Live Conversations',
+              subtitle: count != null
+                  ? '$count total conversations'
+                  : '0 total conversations',
+            );
           },
         ),
 

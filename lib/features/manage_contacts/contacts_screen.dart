@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,10 +9,15 @@ import 'package:synqer_io/app_export.dart';
 import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/theme/app_colors.dart';
+import 'package:synqer_io/core/widgets/app_snackbar.dart';
 import 'package:synqer_io/core/widgets/loading_screen.dart';
+import 'package:synqer_io/features/live_chat/save_contact/bloc/get_groups_bloc.dart';
+import 'package:synqer_io/features/live_chat/save_contact/model/groups_model.dart';
 import 'package:synqer_io/features/live_chat/save_contact/save_contact_screen.dart';
+import 'package:synqer_io/core/widgets/app_custom_button.dart';
 import 'package:synqer_io/features/manage_contacts/bloc/get_contacts_bloc.dart';
 import 'package:synqer_io/features/manage_contacts/model/contacts_model.dart';
+import 'package:synqer_io/features/manage_contacts/widgets/delete_dailog.dart';
 
 const List<Color> _avatarPalette = [
   Color(0xFF6366F1),
@@ -27,10 +33,18 @@ class ContactsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) =>
-          GetContactsBloc(repo: AppInjector.getContactsRepo)
-            ..add(const FetchContactsEvent(page: 1, limit: 20)),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) =>
+              GetContactsBloc(repo: AppInjector.manageContactsRepo)
+                ..add(const FetchContactsEvent(page: 1, limit: 20)),
+        ),
+        BlocProvider(
+          create: (_) =>
+              GetGroupsBloc(getGroupsRepo: AppInjector.getGroupsRepo),
+        ),
+      ],
       child: const _ContactsView(),
     );
   }
@@ -50,27 +64,35 @@ class _ContactsViewState extends State<_ContactsView>
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _groupsScrollController = ScrollController();
   Timer? _debounce;
   final ValueNotifier<String> _searchQuery = ValueNotifier('');
   final ValueNotifier<Set<String>> _selected = ValueNotifier({});
   final ValueNotifier<bool> _selectionMode = ValueNotifier(false);
+  final ValueNotifier<bool> _isDeleting = ValueNotifier(false);
+  bool _hasFetchedGroups = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _scrollController.addListener(_onScroll);
+    _groupsScrollController.addListener(_onGroupsScroll);
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     _searchController.dispose();
     _scrollController.dispose();
+    _groupsScrollController.dispose();
     _searchQuery.dispose();
     _selected.dispose();
     _selectionMode.dispose();
+    _isDeleting.dispose();
     super.dispose();
   }
 
@@ -92,19 +114,65 @@ class _ContactsViewState extends State<_ContactsView>
     }
   }
 
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging || _tabController.index != 1) return;
+    if (_hasFetchedGroups) return;
+    _fetchGroups(search: _searchQuery.value);
+  }
+
+  void _fetchGroups({String search = ''}) {
+    _hasFetchedGroups = true;
+    context.read<GetGroupsBloc>().add(
+      FetchGroupsEvent(page: 1, limit: _pageSize, search: search),
+    );
+  }
+
+  void _refreshGroupsIfNeeded() {
+    _hasFetchedGroups = false;
+    if (_tabController.index == 1) {
+      _fetchGroups(search: _searchQuery.value);
+    }
+  }
+
+  void _onGroupsScroll() {
+    if (!_groupsScrollController.hasClients) return;
+    final maxScroll = _groupsScrollController.position.maxScrollExtent;
+    final current = _groupsScrollController.position.pixels;
+    if (current < maxScroll - 200) return;
+
+    final state = context.read<GetGroupsBloc>().state;
+    if (state is GetGroupsLoaded && state.hasMore && !state.isLoadingMore) {
+      context.read<GetGroupsBloc>().add(
+        LoadMoreGroupsEvent(
+          page: state.currentPage + 1,
+          limit: _pageSize,
+          search: state.search,
+        ),
+      );
+    }
+  }
+
   void _onSearchChanged(String value) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () {
       if (!mounted) return;
       final query = value.trim();
       _searchQuery.value = query;
-      context.read<GetContactsBloc>().add(
-        FetchContactsEvent(
-          page: 1,
-          limit: _pageSize,
-          searchValue: query.isEmpty ? null : query,
-        ),
-      );
+
+      if (_tabController.index == 1) {
+        _hasFetchedGroups = true;
+        context.read<GetGroupsBloc>().add(
+          FetchGroupsEvent(page: 1, limit: _pageSize, search: query),
+        );
+      } else {
+        context.read<GetContactsBloc>().add(
+          FetchContactsEvent(
+            page: 1,
+            limit: _pageSize,
+            searchValue: query.isEmpty ? null : query,
+          ),
+        );
+      }
     });
   }
 
@@ -126,6 +194,80 @@ class _ContactsViewState extends State<_ContactsView>
     _selectionMode.value = false;
   }
 
+  Future<void> _refreshContacts() async {
+    context.read<GetContactsBloc>().add(
+      FetchContactsEvent(
+        page: 1,
+        limit: _pageSize,
+        searchValue: _searchQuery.value.isEmpty ? null : _searchQuery.value,
+      ),
+    );
+  }
+
+  Future<void> _refreshContactsAndGroups() async {
+    await _refreshContacts();
+    _refreshGroupsIfNeeded();
+  }
+
+  Future<void> _deleteContact(String deleteId) async {
+    FocusScope.of(context).unfocus();
+
+    try {
+      _isDeleting.value = true;
+
+      await Future.delayed(const Duration(milliseconds: 800));
+
+      final responseData = await AppInjector.manageContactsRepo.deleteContact(
+        contactId: deleteId,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      if (responseData['success'].toString() == 'true') {
+        await _refreshContactsAndGroups();
+
+        if (!mounted) return;
+
+        AppSnackbar.show(
+          context,
+          message: 'Contact deleted successfully',
+          type: SnackbarType.success,
+        );
+      } else {
+        final errorMsg = responseData['message'];
+        debugPrint("Error in contact delete: $errorMsg");
+
+        if (errorMsg is String && errorMsg.contains("Contact already exists")) {
+          AppSnackbar.show(
+            context,
+            message: errorMsg,
+            type: SnackbarType.error,
+          );
+        } else {
+          AppSnackbar.show(
+            context,
+            message: 'Error in contact delete.',
+            type: SnackbarType.error,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Delete Contact Error: $e");
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      AppSnackbar.show(
+        context,
+        message: 'Error in contact delete.',
+        type: SnackbarType.error,
+      );
+    } finally {
+      _isDeleting.value = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -134,17 +276,12 @@ class _ContactsViewState extends State<_ContactsView>
         final contacts = state is GetContactsLoaded
             ? state.contacts
             : <ContactsDataModel>[];
-        final groups = contacts
-            .map((ct) => ct.groupName)
-            .whereType<String>()
-            .toSet()
-            .toList();
-
         return ListenableBuilder(
           listenable: Listenable.merge([
             _selected,
             _selectionMode,
             _searchQuery,
+            _tabController,
           ]),
           builder: (context, _) {
             return Scaffold(
@@ -160,7 +297,7 @@ class _ContactsViewState extends State<_ContactsView>
                         controller: _tabController,
                         children: [
                           _buildAllContactsContent(c, state, contacts),
-                          _GroupsTab(groups: groups, contacts: contacts),
+                          _GroupsTab(scrollController: _groupsScrollController),
                         ],
                       ),
                     ),
@@ -257,7 +394,10 @@ class _ContactsViewState extends State<_ContactsView>
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 builder: (_) {
-                  return SaveContact(customerNumber: '');
+                  return SaveContact(
+                    customerNumber: '',
+                    onSaved: _refreshContactsAndGroups,
+                  );
                 },
               );
             },
@@ -270,6 +410,8 @@ class _ContactsViewState extends State<_ContactsView>
   // ── Search Bar ─────────────────────────────────────────────────────────────
 
   Widget _buildSearchBar(AppColors c) {
+    final isGroupsTab = _tabController.index == 1;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
       child: Container(
@@ -284,7 +426,9 @@ class _ContactsViewState extends State<_ContactsView>
           onChanged: _onSearchChanged,
           style: TextStyle(color: c.inputText, fontSize: 15),
           decoration: InputDecoration(
-            hintText: 'Search by name or number…',
+            hintText: isGroupsTab
+                ? 'Search groups…'
+                : 'Search by name or number…',
             hintStyle: TextStyle(color: c.inputHint, fontSize: 15),
             prefixIcon: Icon(
               Icons.search_rounded,
@@ -318,16 +462,17 @@ class _ContactsViewState extends State<_ContactsView>
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
       child: Container(
-        height: 44,
+        height: 45,
         decoration: BoxDecoration(
-          color: c.surfaceHigh,
-          borderRadius: BorderRadius.circular(12),
+          color: c.surface,
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(color: c.border),
         ),
         child: TabBar(
           controller: _tabController,
           indicator: BoxDecoration(
             color: c.primary,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(35),
           ),
           indicatorSize: TabBarIndicatorSize.tab,
           indicatorPadding: const EdgeInsets.all(4),
@@ -368,29 +513,49 @@ class _ContactsViewState extends State<_ContactsView>
 
   // ── Dialogs ────────────────────────────────────────────────────────────────
 
-  void _showEditDialog(ContactsDataModel c) => _showContactFormDialog(c);
-
-  void _showContactFormDialog(ContactsDataModel? contact) {
+  void _showEditDialog(ContactsDataModel contact) {
+    final colors = context.colors;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) =>
-          _ContactFormSheet(contact: contact, isEdit: contact != null),
+      backgroundColor: colors.bottomSheet,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SaveContact(
+        customerNumber: contact.mobileNumber ?? '',
+        contactId: contact.sId,
+        initialName: contact.fullName,
+        initialMobile: contact.mobileNumber,
+        initialGroup: contact.groupName,
+        onSaved: _refreshContactsAndGroups,
+      ),
     );
   }
 
   void _showDeleteDialog(ContactsDataModel contact) {
     final c = context.colors;
+    final contactId = contact.sId;
+
+    if (contactId == null || contactId.isEmpty) {
+      AppSnackbar.show(
+        context,
+        message: 'Unable to delete contact.',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
     showDialog(
       context: context,
-      builder: (_) => _ConfirmDialog(
+      builder: (_) => DeleteDialog(
         title: 'Delete Contact',
         message:
             'Remove ${contact.fullName} from your contacts? This cannot be undone.',
         confirmLabel: 'Delete',
         confirmColor: c.error,
-        onConfirm: () => Navigator.pop(context),
+        isLoading: _isDeleting,
+        onConfirm: () => _deleteContact(contactId),
       ),
     );
   }
@@ -399,7 +564,7 @@ class _ContactsViewState extends State<_ContactsView>
     final c = context.colors;
     showDialog(
       context: context,
-      builder: (_) => _ConfirmDialog(
+      builder: (_) => DeleteDialog(
         title: 'Delete ${_selected.value.length} Contacts',
         message: 'This will permanently remove all selected contacts.',
         confirmLabel: 'Delete All',
@@ -650,39 +815,71 @@ class _ContactCard extends StatelessWidget {
 // ── Groups Tab ───────────────────────────────────────────────────────────────
 
 class _GroupsTab extends StatelessWidget {
-  final List<String> groups;
-  final List<ContactsDataModel> contacts;
+  final ScrollController scrollController;
 
-  const _GroupsTab({required this.groups, required this.contacts});
+  const _GroupsTab({required this.scrollController});
 
   @override
   Widget build(BuildContext context) {
-    if (groups.isEmpty) {
-      return const _EmptyState(message: 'No groups found');
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
-      itemCount: groups.length,
-      itemBuilder: (_, i) {
-        final groupContacts = contacts
-            .where((c) => c.groupName == groups[i])
-            .toList();
-        return _GroupCard(groupName: groups[i], contacts: groupContacts);
+    return BlocBuilder<GetGroupsBloc, GetGroupsState>(
+      builder: (context, state) {
+        if (state is GetGroupsInitial) {
+          return const SizedBox.shrink();
+        }
+        if (state is GetGroupsLoading) {
+          return FullScreenLoader(message: 'Groups loading...');
+        }
+        if (state is GetGroupsError) {
+          return _EmptyState(message: state.message);
+        }
+        if (state is! GetGroupsLoaded || state.groups.isEmpty) {
+          return const _EmptyState(message: 'No groups found');
+        }
+
+        final itemCount = state.groups.length + (state.isLoadingMore ? 1 : 0);
+
+        return ListView.builder(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+          itemCount: itemCount,
+          itemBuilder: (_, i) {
+            if (i == state.groups.length) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: CircularProgressIndicator(
+                    color: context.colors.primary,
+                    strokeWidth: 1,
+                  ),
+                ),
+              );
+            }
+
+            return _GroupCard(group: state.groups[i]);
+          },
+        );
       },
     );
   }
 }
 
 class _GroupCard extends StatelessWidget {
-  final String groupName;
-  final List<ContactsDataModel> contacts;
+  final GroupsDataModel group;
 
-  const _GroupCard({required this.groupName, required this.contacts});
+  const _GroupCard({required this.group});
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final activeCount = contacts.where((x) => x.status == 'active').length;
+    final groupName = group.groupName ?? 'Unknown Group';
+    final totalNumbers = group.totalNumbers ?? 0;
+    final activityParts = [
+      if (group.date?.isNotEmpty ?? false) group.date!,
+      if (group.time?.isNotEmpty ?? false) group.time!,
+    ];
+    final activityText = activityParts.isEmpty
+        ? 'No recent activity'
+        : 'Last activity ${activityParts.join(' - ')}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -721,14 +918,14 @@ class _GroupCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '$activeCount active · ${contacts.length} total',
+                        activityText,
                         style: TextStyle(fontSize: 12, color: c.textSecondary),
                       ),
                     ],
                   ),
                 ),
                 _StatusChip(
-                  label: '${contacts.length}',
+                  label: '$totalNumbers',
                   color: c.primary,
                   bg: c.accentSoft,
                 ),
@@ -737,74 +934,27 @@ class _GroupCard extends StatelessWidget {
               ],
             ),
           ),
-          if (contacts.isNotEmpty) ...[
+          if (totalNumbers > 0) ...[
             Divider(height: 1, color: c.divider),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
               child: Row(
                 children: [
-                  ...contacts.take(5).map((x) => _MiniAvatar(contact: x)),
-                  if (contacts.length > 5)
-                    Container(
-                      width: 28,
-                      height: 28,
-                      margin: const EdgeInsets.only(left: 4),
-                      decoration: BoxDecoration(
-                        color: c.surfaceHigh,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: c.border),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '+${contacts.length - 5}',
-                          style: TextStyle(fontSize: 9, color: c.textSecondary),
-                        ),
-                      ),
+                  Icon(Icons.contacts_rounded, size: 15, color: c.textMuted),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$totalNumbers contact${totalNumbers == 1 ? '' : 's'}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: c.textSecondary,
+                      fontWeight: FontWeight.w500,
                     ),
+                  ),
                 ],
               ),
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _MiniAvatar extends StatelessWidget {
-  final ContactsDataModel contact;
-  const _MiniAvatar({required this.contact});
-
-  String get _initial => (contact.fullName?.isNotEmpty ?? false)
-      ? contact.fullName![0].toUpperCase()
-      : '?';
-
-  Color get _color {
-    final idx = (contact.sId?.hashCode ?? 0).abs() % _avatarPalette.length;
-    return _avatarPalette[idx];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      width: 28,
-      height: 28,
-      margin: const EdgeInsets.only(right: 4),
-      decoration: BoxDecoration(
-        color: _color.withOpacity(0.2),
-        shape: BoxShape.circle,
-        border: Border.all(color: c.surface, width: 1.5),
-      ),
-      child: Center(
-        child: Text(
-          _initial,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: _color,
-          ),
-        ),
       ),
     );
   }
@@ -940,13 +1090,13 @@ class _BulkActionFab extends StatelessWidget {
         color: c.surfaceHigh,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: c.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        // boxShadow: [
+        //   BoxShadow(
+        //     color: Colors.black.withOpacity(0.4),
+        //     blurRadius: 20,
+        //     offset: const Offset(0, 8),
+        //   ),
+        // ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1028,274 +1178,6 @@ class _EmptyState extends StatelessWidget {
 }
 
 // ── Contact Form Bottom Sheet ─────────────────────────────────────────────────
-
-class _ContactFormSheet extends StatefulWidget {
-  final ContactsDataModel? contact;
-  final bool isEdit;
-
-  const _ContactFormSheet({this.contact, required this.isEdit});
-
-  @override
-  State<_ContactFormSheet> createState() => _ContactFormSheetState();
-}
-
-class _ContactFormSheetState extends State<_ContactFormSheet> {
-  static const _statusOptions = ['active', 'inactive', 'pending'];
-
-  late final TextEditingController _nameCtrl;
-  late final TextEditingController _phoneCtrl;
-  late final TextEditingController _groupCtrl;
-  late final ValueNotifier<String> _statusNotifier;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameCtrl = TextEditingController(text: widget.contact?.fullName ?? '');
-    _phoneCtrl = TextEditingController(
-      text: widget.contact?.mobileNumber ?? '',
-    );
-    _groupCtrl = TextEditingController(text: widget.contact?.groupName ?? '');
-    _statusNotifier = ValueNotifier(widget.contact?.status ?? 'active');
-  }
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _phoneCtrl.dispose();
-    _groupCtrl.dispose();
-    _statusNotifier.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      decoration: BoxDecoration(
-        color: c.bottomSheet,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.fromLTRB(
-        24,
-        20,
-        24,
-        MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: c.bottomSheetHandle,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            widget.isEdit ? 'Edit Contact' : 'New Contact',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: c.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 20),
-          _FormField(
-            label: 'Full Name',
-            hint: 'Enter full name',
-            controller: _nameCtrl,
-            icon: Icons.person_rounded,
-          ),
-          const SizedBox(height: 12),
-          _FormField(
-            label: 'Mobile Number',
-            hint: '+91 XXXXX XXXXX',
-            controller: _phoneCtrl,
-            icon: Icons.phone_rounded,
-            keyboard: TextInputType.phone,
-          ),
-          const SizedBox(height: 12),
-          _FormField(
-            label: 'Group',
-            hint: 'Enter group name',
-            controller: _groupCtrl,
-            icon: Icons.group_rounded,
-          ),
-          const SizedBox(height: 12),
-          ValueListenableBuilder<String>(
-            valueListenable: _statusNotifier,
-            builder: (context, statusValue, _) => _DropdownField(
-              label: 'Status',
-              value: statusValue,
-              items: _statusOptions,
-              onChanged: (v) => _statusNotifier.value = v!,
-            ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: c.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 0,
-              ),
-              child: Text(
-                widget.isEdit ? 'Save Changes' : 'Add Contact',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: c.onBrand,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FormField extends StatelessWidget {
-  final String label;
-  final String hint;
-  final TextEditingController controller;
-  final IconData icon;
-  final TextInputType keyboard;
-
-  const _FormField({
-    required this.label,
-    required this.hint,
-    required this.controller,
-    required this.icon,
-    this.keyboard = TextInputType.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: c.textSecondary,
-            letterSpacing: 0.4,
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          keyboardType: keyboard,
-          style: TextStyle(color: c.inputText, fontSize: 15),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(color: c.inputHint),
-            prefixIcon: Icon(icon, size: 18, color: c.inputIcon),
-            filled: true,
-            fillColor: c.inputFill,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: c.inputBorder),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: c.inputBorder),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: c.inputBorderFocus),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              vertical: 14,
-              horizontal: 14,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DropdownField extends StatelessWidget {
-  final String label;
-  final String value;
-  final List<String> items;
-  final ValueChanged<String?> onChanged;
-
-  const _DropdownField({
-    required this.label,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: c.textSecondary,
-            letterSpacing: 0.4,
-          ),
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          value: value,
-          items: items
-              .map(
-                (i) => DropdownMenuItem(
-                  value: i,
-                  child: Text(i, style: TextStyle(color: c.textPrimary)),
-                ),
-              )
-              .toList(),
-          onChanged: onChanged,
-          dropdownColor: c.dropdown,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: c.inputFill,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: c.inputBorder),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: c.inputBorder),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: c.inputBorderFocus),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              vertical: 14,
-              horizontal: 14,
-            ),
-          ),
-          icon: Icon(Icons.keyboard_arrow_down_rounded, color: c.textSecondary),
-        ),
-      ],
-    );
-  }
-}
 
 // ── Bulk Upload Sheet ─────────────────────────────────────────────────────────
 
@@ -1437,106 +1319,3 @@ class _InfoTile extends StatelessWidget {
 }
 
 // ── Confirm Dialog ────────────────────────────────────────────────────────────
-
-class _ConfirmDialog extends StatelessWidget {
-  final String title;
-  final String message;
-  final String confirmLabel;
-  final Color confirmColor;
-  final VoidCallback onConfirm;
-
-  const _ConfirmDialog({
-    required this.title,
-    required this.message,
-    required this.confirmLabel,
-    required this.confirmColor,
-    required this.onConfirm,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Dialog(
-      backgroundColor: c.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: c.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              message,
-              style: TextStyle(
-                fontSize: 14,
-                color: c.textSecondary,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: c.surfaceHigh,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: c.border),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(
-                            color: c.textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: onConfirm,
-                    child: Container(
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: confirmColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: confirmColor.withOpacity(0.4),
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          confirmLabel,
-                          style: TextStyle(
-                            color: confirmColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

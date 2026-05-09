@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:synqer_io/app_export.dart';
 import 'package:synqer_io/core/model/paginated_response.dart';
 import 'package:synqer_io/features/manage_contacts/model/contacts_model.dart';
@@ -35,6 +36,45 @@ class ManageContactsRepo {
       totalItems: response['total'],
       totalPages: response['pages'],
     );
+  }
+
+  Future<dynamic> addContact({
+    required String fullName,
+    required String groupName,
+    required String phone,
+  }) async {
+    final responseData = await dio.post(APIsEndPoints.addContacts, {
+      "fullName": fullName.toString().trim(),
+      "groupName": groupName.toString().trim(),
+      "mobileNumber": phone,
+    });
+
+    return responseData;
+  }
+
+  //edit contact
+  Future<dynamic> updateContact({
+    required String contactId,
+    required String fullName,
+    required String groupName,
+    required String phone,
+  }) async {
+    final responseData = await dio.put(APIsEndPoints.updateContact(contactId), {
+      "fullName": fullName.toString().trim(),
+      "groupName": groupName.toString().trim(),
+      "mobileNumber": phone,
+    });
+
+    return responseData;
+  }
+
+  //delete contact
+  Future<dynamic> deleteContact({required String contactId}) async {
+    final responseData = await dio.delete(
+      APIsEndPoints.deleteContact(contactId),
+    );
+    debugPrint(responseData.toString());
+    return responseData;
   }
 }
 

@@ -1312,9 +1312,7 @@ class _BalanceRcsRow extends StatelessWidget {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ── PRICING WIDGETS (NEW) ────────────────────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════════════════════
+// ── PRICING WIDGETS (NEW) ────
 
 class _PricingRow extends StatelessWidget {
   final String service;
@@ -1631,9 +1629,7 @@ class _PricingRcsRow extends StatelessWidget {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ── PREMIUM SECTION HEADER (NEW) ─────────────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════════════════════
+// ── PREMIUM SECTION HEADER (NEW) ────
 
 class _PremiumSectionHeader extends StatelessWidget {
   final String label;
@@ -1694,7 +1690,7 @@ class _PremiumSectionHeader extends StatelessWidget {
   );
 }
 
-// ─── Data entries ─────────────────────────────────────────────────────────────
+// ─── Data entries ───
 
 class _SvcEntry {
   final String name;
@@ -1706,7 +1702,7 @@ class _SvcEntry {
   const _SvcEntry(this.name, this.service, this.color);
 }
 
-// ─── Loading / Error ──────────────────────────────────────────────────────────
+// ─── Loading / Error ────
 
 class _LoadingCard extends StatelessWidget {
   final AppColors c;

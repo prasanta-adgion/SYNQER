@@ -90,12 +90,15 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   overflow: TextOverflow.ellipsis,
 
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+                    // fontSize: 20,
+                    // fontWeight: FontWeight.w700,
 
+                    // color: titleColor ?? c.textPrimary,
+
+                    // letterSpacing: -0.4,
                     color: titleColor ?? c.textPrimary,
-
-                    letterSpacing: -0.4,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
 
@@ -110,7 +113,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                     overflow: TextOverflow.ellipsis,
 
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 12,
 
                       color: subtitleColor ?? c.textSecondary,
 
@@ -124,6 +127,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
           if (trailing != null) ...[const SizedBox(width: 8), trailing!],
         ],
+      ),
+
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(height: 1, color: c.border),
       ),
     );
   }

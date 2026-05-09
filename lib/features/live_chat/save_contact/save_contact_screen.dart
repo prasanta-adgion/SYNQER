@@ -18,8 +18,23 @@ import 'package:synqer_io/features/live_chat/save_contact/bloc/get_groups_bloc.d
 
 class SaveContact extends StatefulWidget {
   final String customerNumber;
+  final String? contactId;
+  final String? initialName;
+  final String? initialMobile;
+  final String? initialGroup;
+  final FutureOr<void> Function()? onSaved;
 
-  const SaveContact({super.key, required this.customerNumber});
+  const SaveContact({
+    super.key,
+    required this.customerNumber,
+    this.contactId,
+    this.initialName,
+    this.initialMobile,
+    this.initialGroup,
+    this.onSaved,
+  });
+
+  bool get isEdit => contactId != null;
 
   @override
   State<SaveContact> createState() => _SaveContactState();
@@ -38,13 +53,15 @@ class _SaveContactState extends State<SaveContact> {
   void initState() {
     super.initState();
 
-    fullNameController = TextEditingController();
+    fullNameController = TextEditingController(text: widget.initialName ?? '');
 
     mobileController = TextEditingController(
-      text: AppConfig.removeCountryCode(widget.customerNumber),
+      text: AppConfig.removeCountryCode(
+        widget.initialMobile ?? widget.customerNumber,
+      ),
     );
 
-    groupController = TextEditingController();
+    groupController = TextEditingController(text: widget.initialGroup ?? '');
   }
 
   @override
@@ -92,27 +109,39 @@ class _SaveContactState extends State<SaveContact> {
 
       await Future.delayed(const Duration(milliseconds: 800));
 
-      final responseData = await AppInjector.getGroupsRepo.addContact(
-        fullName: fullName,
-        groupName: groupName,
-        phone: phone,
-      );
+      final responseData = widget.isEdit
+          ? await AppInjector.manageContactsRepo.updateContact(
+              contactId: widget.contactId!,
+              fullName: fullName,
+              groupName: groupName,
+              phone: phone,
+            )
+          : await AppInjector.manageContactsRepo.addContact(
+              fullName: fullName,
+              groupName: groupName,
+              phone: phone,
+            );
 
       if (!mounted) return;
-
       Navigator.pop(context);
 
       if (responseData['success'].toString() == 'true') {
+        await widget.onSaved?.call();
+
+        if (!mounted) return;
+
         AppSnackbar.show(
           context,
-          message: 'Contact saved successfully',
+          message: widget.isEdit
+              ? 'Contact updated successfully'
+              : 'Contact saved successfully',
           type: SnackbarType.success,
         );
       } else {
         final errorMsg = responseData['message'];
-        debugPrint("Error in contact save in: $errorMsg");
+        debugPrint("Error in contact save/update: $errorMsg");
 
-        if (errorMsg.contains("Contact already exists")) {
+        if (errorMsg is String && errorMsg.contains("Contact already exists")) {
           AppSnackbar.show(
             context,
             message: errorMsg,
@@ -127,14 +156,16 @@ class _SaveContactState extends State<SaveContact> {
         }
       }
     } catch (e) {
-      debugPrint("Save Contact Error: $e");
+      debugPrint("Save/Update Contact Error: $e");
 
       if (!mounted) return;
       Navigator.pop(context);
 
       AppSnackbar.show(
         context,
-        message: 'Error in contact save.',
+        message: widget.isEdit
+            ? 'Error in contact update.'
+            : 'Error in contact save.',
         type: SnackbarType.error,
       );
     } finally {
@@ -184,7 +215,9 @@ class _SaveContactState extends State<SaveContact> {
                     Row(
                       children: [
                         Icon(
-                          CupertinoIcons.person_crop_circle_badge_plus,
+                          widget.isEdit
+                              ? CupertinoIcons.pencil_circle
+                              : CupertinoIcons.person_crop_circle_badge_plus,
                           color: c.green,
                           size: 26,
                         ),
@@ -192,7 +225,7 @@ class _SaveContactState extends State<SaveContact> {
                         const SizedBox(width: 10),
 
                         Text(
-                          "Add Contact",
+                          widget.isEdit ? "Edit Contact" : "Add Contact",
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
@@ -251,7 +284,11 @@ class _SaveContactState extends State<SaveContact> {
                       valueListenable: _isSaving,
                       builder: (context, isSaving, _) {
                         return AppButton(
-                          text: isSaving ? 'Saving...' : 'Save Contact',
+                          text: isSaving
+                              ? (widget.isEdit ? 'Updating...' : 'Saving...')
+                              : (widget.isEdit
+                                    ? 'Save Changes'
+                                    : 'Save Contact'),
                           loading: isSaving,
                           onPressed: isSaving ? null : _saveContact,
                           icon: isSaving

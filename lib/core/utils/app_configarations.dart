@@ -58,11 +58,11 @@ class AppConfig {
 
   static Color serviceColor(String service) {
     switch (service) {
-      case 'sms':
+      case 'sms' || 'bulk sms':
         return const Color(0xFF4F46E5);
       case 'whatsapp':
         return const Color(0xFF10B981);
-      case 'rcs':
+      case 'rcs' || "RCS":
         return const Color(0xFFF97316);
       default:
         return const Color(0xFF64748B);
@@ -77,8 +77,9 @@ class AppConfig {
       case 'whatsapp':
         return FaIcon(FontAwesomeIcons.whatsapp, size: size, color: color);
 
-      case 'rcs':
-        return Icon(CupertinoIcons.text_bubble, size: size, color: color);
+      case 'rcs' || 'RCS':
+        // return Icon(CupertinoIcons.text_bubble, size: size, color: color);
+        return Icon(Icons.forum_rounded, size: size, color: color);
 
       default:
         return Icon(Icons.receipt_long_rounded, size: size, color: color);

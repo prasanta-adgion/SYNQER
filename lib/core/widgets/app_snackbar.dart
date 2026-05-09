@@ -32,17 +32,30 @@ class AppSnackbar {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
+
         elevation: 8,
+
         backgroundColor: bgColor,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+
+        margin: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          MediaQuery.of(context).padding.bottom + 12,
+        ),
+
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+
         content: Row(
           children: [
             Icon(icon, color: Colors.white, size: 22),
+
             const SizedBox(width: 12),
+
             Expanded(
               child: Text(
                 message,
+
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 15,
@@ -52,6 +65,7 @@ class AppSnackbar {
             ),
           ],
         ),
+
         duration: const Duration(seconds: 2),
       ),
     );

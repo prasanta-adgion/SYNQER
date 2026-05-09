@@ -3,7 +3,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:synqer_io/core/app_injector.dart'; // adjust path if needed
-import 'package:synqer_io/core/theme/app_colors.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/token_storage.dart';
 import 'package:synqer_io/core/utils/app_images.dart';

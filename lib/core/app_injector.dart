@@ -31,7 +31,7 @@ class AppInjector {
   );
 
   //get contacts
-  static final ManageContactsRepo getContactsRepo = ManageContactsRepo(
+  static final ManageContactsRepo manageContactsRepo = ManageContactsRepo(
     dio: dio,
   );
 }
