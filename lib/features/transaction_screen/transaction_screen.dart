@@ -8,6 +8,7 @@ import 'package:synqer_io/core/enums/transaction_enums.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/utils/app_configarations.dart';
 import 'package:synqer_io/core/widgets/custom_appbar.dart';
+import 'package:synqer_io/core/widgets/icon_button.dart';
 import 'package:synqer_io/core/widgets/loading_screen.dart';
 import 'package:synqer_io/features/profile/model/user_profile_model.dart';
 import 'package:synqer_io/features/transaction_screen/bloc/transaction_get_bloc.dart';
@@ -166,7 +167,7 @@ class _TransactionScreenState extends State<_TransactionView> {
           titleColor: c.textPrimary,
 
           subtitleColor: c.textSecondary,
-          trailing: _IconBtn(
+          trailing: IconBtn(
             icon: Icons.tune_rounded,
 
             onTap: () async {
@@ -332,33 +333,6 @@ class _AnimatedCollapse extends StatelessWidget {
               child: SizedBox(height: maxHeight, child: child),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _IconBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _IconBtn({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Material(
-      color: c.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: c.border),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          width: 40,
-          height: 40,
-          child: Icon(icon, size: 18, color: c.textSecondary),
         ),
       ),
     );

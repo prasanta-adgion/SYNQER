@@ -1,62 +1,49 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:synqer_io/core/enums/leadfilter_tabs_enum.dart';
 import 'package:synqer_io/core/model/navbar_item_model.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/widgets/custom_appbar.dart';
+import 'package:synqer_io/core/widgets/icon_button.dart';
+import 'package:synqer_io/core/widgets/theme_toggle_button.dart';
+import 'package:synqer_io/features/all_leads/channel_leads/whatsapp_lead/whatsapp_leads_screen.dart';
+import 'package:synqer_io/features/all_leads/widgets/lead_filter_sheet.dart';
+import 'package:synqer_io/features/all_leads/channel_leads/rcs_lead/rcs_leads_screen.dart';
+import 'package:synqer_io/features/all_leads/widgets/lead_tab_shell.dart';
 import 'package:synqer_io/features/dashboard/widgets/header_section.dart';
 
-class LeadsScreen extends StatefulWidget {
-  const LeadsScreen({super.key});
+class NavbarLeadsScreen extends StatefulWidget {
+  const NavbarLeadsScreen({super.key});
 
   @override
-  State<LeadsScreen> createState() => _LeadsScreenState();
+  State<NavbarLeadsScreen> createState() => _NavbarLeadsScreenState();
 }
 
-class _LeadsScreenState extends State<LeadsScreen> {
-  final ValueNotifier<int> _leadNavIndex = ValueNotifier(0);
+class _NavbarLeadsScreenState extends State<NavbarLeadsScreen> {
+  final _leadNavIndex = ValueNotifier(0);
+  final _channelTabIndex = ValueNotifier(0);
+  final _webTabIndex = ValueNotifier(0);
 
-  static const _rcsLeads = [
-    {
-      'name': 'Ananya Sharma',
-      'phone': '+91 98765 43210',
-      'tag': 'Hot',
-      'time': '2h ago',
-    },
-    {
-      'name': 'Rohan Verma',
-      'phone': '+91 87654 32109',
-      'tag': 'Warm',
-      'time': '5h ago',
-    },
-    {
-      'name': 'Karan Mehta',
-      'phone': '+91 65432 10987',
-      'tag': 'Hot',
-      'time': '1d ago',
-    },
-  ];
+  final ValueNotifier<bool> _showTabBar = ValueNotifier(true);
 
-  static const _whatsappLeads = [
-    {
-      'name': 'Priya Nair',
-      'phone': '+91 76543 21098',
-      'tag': 'Cold',
-      'time': '1d ago',
-    },
-    {
-      'name': 'Sneha Iyer',
-      'phone': '+91 54321 09876',
-      'tag': 'Warm',
-      'time': '2d ago',
-    },
-    {
-      'name': 'Amit Patel',
-      'phone': '+91 43210 98765',
-      'tag': 'Cold',
-      'time': '3d ago',
-    },
-  ];
+  final _whatsappFilters = ValueNotifier<Map<String, dynamic>>({
+    'status': 'All',
+    'leadType': 'All',
+  });
+  final _rcsFilters = ValueNotifier<Map<String, dynamic>>({
+    'eventType': 'All',
+    'fromDate': null,
+    'toDate': null,
+  });
+  final _aiAgentFilters = ValueNotifier<Map<String, dynamic>>({
+    'isConnected': 'All',
+  });
+  final _webFormFilters = ValueNotifier<Map<String, dynamic>>({
+    'isRead': 'All',
+    'isConnected': 'All',
+  });
 
   static const _aiAgentLeads = [
     {
@@ -100,9 +87,79 @@ class _LeadsScreenState extends State<LeadsScreen> {
     },
   ];
 
+  bool _hasActive(Map<String, dynamic> f) => f.values.any((v) {
+    if (v == null) return false;
+    if (v is String) return v != 'All';
+    if (v is DateTime) return true;
+    return false;
+  });
+
+  bool get _currentFilterActive {
+    if (_leadNavIndex.value == 0) {
+      return _channelTabIndex.value == 0
+          ? _hasActive(_whatsappFilters.value)
+          : _hasActive(_rcsFilters.value);
+    }
+    return _webTabIndex.value == 0
+        ? _hasActive(_aiAgentFilters.value)
+        : _hasActive(_webFormFilters.value);
+  }
+
+  Future<void> _openFilter() async {
+    final nav = _leadNavIndex.value;
+    if (nav == 0) {
+      if (_channelTabIndex.value == 0) {
+        final result = await LeadFilterSheet.show(
+          context,
+          filterContext: LeadFilterContext.whatsapp,
+          currentFilters: Map.from(_whatsappFilters.value),
+        );
+        if (result != null) _whatsappFilters.value = result;
+      } else {
+        final result = await LeadFilterSheet.show(
+          context,
+          filterContext: LeadFilterContext.rcs,
+          currentFilters: Map.from(_rcsFilters.value),
+        );
+        if (result != null) _rcsFilters.value = result;
+      }
+    } else {
+      if (_webTabIndex.value == 0) {
+        final result = await LeadFilterSheet.show(
+          context,
+          filterContext: LeadFilterContext.aiWebAgent,
+          currentFilters: Map.from(_aiAgentFilters.value),
+        );
+        if (result != null) _aiAgentFilters.value = result;
+      } else {
+        final result = await LeadFilterSheet.show(
+          context,
+          filterContext: LeadFilterContext.webForm,
+          currentFilters: Map.from(_webFormFilters.value),
+        );
+        if (result != null) _webFormFilters.value = result;
+      }
+    }
+  }
+
+  void onScrollDirectionChanged(ScrollDirection direction) {
+    if (direction == ScrollDirection.reverse && _showTabBar.value) {
+      _showTabBar.value = false;
+    } else if (direction == ScrollDirection.forward && !_showTabBar.value) {
+      _showTabBar.value = true;
+    }
+  }
+
   @override
   void dispose() {
     _leadNavIndex.dispose();
+    _channelTabIndex.dispose();
+    _webTabIndex.dispose();
+    _whatsappFilters.dispose();
+    _rcsFilters.dispose();
+    _aiAgentFilters.dispose();
+    _webFormFilters.dispose();
+    _showTabBar.dispose();
     super.dispose();
   }
 
@@ -119,35 +176,84 @@ class _LeadsScreenState extends State<LeadsScreen> {
         backgroundColor: c.surface,
         titleColor: c.textPrimary,
         subtitleColor: c.textSecondary,
+        onBack: () => Navigator.pop(context),
+
+        trailing: Row(
+          children: [
+            ThemeToggleButton(),
+            const SizedBox(width: 10),
+            ListenableBuilder(
+              listenable: Listenable.merge([
+                _leadNavIndex,
+                _channelTabIndex,
+                _webTabIndex,
+                _whatsappFilters,
+                _rcsFilters,
+                _aiAgentFilters,
+                _webFormFilters,
+              ]),
+              builder: (ctx, _) {
+                final lc = ctx.colors;
+                final active = _currentFilterActive;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconBtn(
+                      icon: Icons.tune_outlined,
+                      onTap: () {
+                        _openFilter();
+                      },
+                    ),
+                    if (active)
+                      Positioned(
+                        top: 7,
+                        right: 7,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: lc.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: lc.surface, width: 1.5),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
 
       body: SafeArea(
         top: false,
-        minimum: EdgeInsets.only(top: 10),
+        minimum: const EdgeInsets.only(top: 10),
         child: ValueListenableBuilder<int>(
           valueListenable: _leadNavIndex,
           builder: (context, selectedIndex, _) {
             if (selectedIndex == 0) {
-              return const _LeadTabShell(
-                tabs: ['WhatsApp Leads', 'RCS Leads'],
+              return LeadTabShell(
+                key: const ValueKey('channel'),
+                tabs: const ['WhatsApp Leads', 'RCS Leads'],
+                onTabChanged: (i) => _channelTabIndex.value = i,
                 children: [
-                  _LeadListView(
-                    title: 'WhatsApp Leads',
-                    searchHint: 'Search WhatsApp leads...',
-                    leads: _whatsappLeads,
-                  ),
-                  _LeadListView(
-                    title: 'RCS Leads',
-                    searchHint: 'Search RCS leads...',
-                    leads: _rcsLeads,
-                  ),
+                  // const _LeadListView(
+                  //   title: 'WhatsApp Leads',
+                  //   searchHint: 'Search WhatsApp leads...',
+                  //   leads: _whatsappLeads,
+                  // ),
+                  WhatsappLeadsScreen(filtersNotifier: _whatsappFilters),
+                  RcsLeadsScreen(filtersNotifier: _rcsFilters),
                 ],
               );
             }
 
-            return const _LeadTabShell(
-              tabs: ['AI Web Agent Leads', 'Web Form Leads'],
-              children: [
+            return LeadTabShell(
+              key: const ValueKey('web'),
+              tabs: const ['AI Web Agent Leads', 'Web Form Leads'],
+              onTabChanged: (i) => _webTabIndex.value = i,
+              children: const [
                 _LeadListView(
                   title: 'AI Web Agent Leads',
                   searchHint: 'Search AI web agent leads...',
@@ -244,53 +350,6 @@ class _LeadNavBar extends StatelessWidget {
             }).toList(),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _LeadTabShell extends StatelessWidget {
-  final List<String> tabs;
-  final List<Widget> children;
-
-  const _LeadTabShell({required this.tabs, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-
-    return DefaultTabController(
-      length: tabs.length,
-      child: Column(
-        children: [
-          Container(
-            height: 45,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: c.surface,
-              borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: c.border),
-            ),
-            child: TabBar(
-              indicator: BoxDecoration(
-                color: c.primary,
-                borderRadius: BorderRadius.circular(35),
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicatorPadding: const EdgeInsets.all(4),
-              dividerColor: Colors.transparent,
-              labelColor: Colors.white,
-              unselectedLabelColor: c.textSecondary,
-              labelStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-              tabs: tabs.map((x) => Tab(text: x)).toList(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(child: TabBarView(children: children)),
-        ],
       ),
     );
   }
@@ -416,170 +475,7 @@ class _LeadListView extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 34,
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            children: const [
-              _FilterChip(label: 'All', selected: true),
-              _FilterChip(label: 'Hot'),
-              _FilterChip(label: 'Warm'),
-              _FilterChip(label: 'Cold'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            physics: const BouncingScrollPhysics(),
-            itemCount: leads.length,
-            itemBuilder: (ctx, i) {
-              return _LeadCard(lead: leads[i]);
-            },
-          ),
-        ),
       ],
-    );
-  }
-}
-
-class _LeadCard extends StatelessWidget {
-  final Map<String, String> lead;
-
-  const _LeadCard({required this.lead});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final tag = lead['tag'] ?? '';
-    final tagColor = tag == 'Hot'
-        ? c.error
-        : tag == 'Warm'
-        ? c.primary
-        : c.textSecondary;
-    final name = lead['name'] ?? '';
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 9),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: c.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: c.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: c.surfaceHigh,
-              shape: BoxShape.circle,
-              border: Border.all(color: c.border),
-            ),
-            child: Center(
-              child: Text(
-                name.isEmpty ? '?' : name[0],
-                style: TextStyle(
-                  color: c.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    color: c.textPrimary,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  lead['phone'] ?? '',
-                  style: TextStyle(color: c.textSecondary, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _Badge(label: tag, color: tagColor),
-              const SizedBox(height: 5),
-              Text(
-                lead['time'] ?? '',
-                style: TextStyle(color: c.textSecondary, fontSize: 10),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _Badge({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  const _FilterChip({required this.label, this.selected = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: BoxDecoration(
-        color: selected ? c.primary : c.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: selected ? c.primary : c.border),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: selected ? c.onBrand : c.textSecondary,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
     );
   }
 }

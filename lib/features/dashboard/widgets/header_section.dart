@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:synqer_io/core/theme/theme_picker_sheet.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/core/widgets/theme_toggle_button.dart';
 import 'package:synqer_io/features/profile/profile_screen.dart';
 
 class HeaderSection extends StatelessWidget {
@@ -48,7 +48,7 @@ class HeaderSection extends StatelessWidget {
             ),
           ),
           // ── Theme toggle ────────────────────────────────────────────────
-          _ThemeToggleButton(),
+          ThemeToggleButton(),
           // const SizedBox(width: 10),
           // const _IconBtn(icon: Icons.notifications_none_rounded, badge: true),
           const SizedBox(width: 10),
@@ -85,80 +85,6 @@ class HeaderSection extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ThemeToggleButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final controller = context.themeController;
-
-    return GestureDetector(
-      onTap: controller.cycle,
-      onLongPress: () => ThemePickerSheet.show(context),
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: c.surface,
-          shape: BoxShape.circle,
-          border: Border.all(color: c.border),
-        ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          transitionBuilder: (child, anim) =>
-              ScaleTransition(scale: anim, child: child),
-          child: Icon(
-            controller.mode.icon,
-            key: ValueKey(controller.mode),
-            color: c.textSecondary,
-            size: 18,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _IconBtn extends StatelessWidget {
-  final IconData icon;
-  final bool badge;
-  const _IconBtn({required this.icon, this.badge = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: c.surface,
-            shape: BoxShape.circle,
-            border: Border.all(color: c.border),
-          ),
-          child: Icon(icon, color: c.textSecondary, size: 18),
-        ),
-        if (badge)
-          Positioned(
-            top: 7,
-            right: 7,
-            child: Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(
-                color: c.primary,
-                shape: BoxShape.circle,
-                border: Border.all(color: c.bg, width: 1.5),
-              ),
-            ),
-          ),
-      ],
     );
   }
 }

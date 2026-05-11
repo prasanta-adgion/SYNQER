@@ -10,7 +10,7 @@ import 'package:synqer_io/core/model/navbar_item_model.dart';
 import 'package:synqer_io/core/theme/app_colors.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/utils/app_configarations.dart';
-import 'package:synqer_io/features/all_leads/leads_screen.dart';
+import 'package:synqer_io/features/all_leads/navbar_leads_screen.dart';
 import 'package:synqer_io/features/bulk_sms/bulk_sms_screen.dart';
 import 'package:synqer_io/features/dashboard/widgets/header_section.dart';
 import 'package:synqer_io/features/live_chat/live_conversions/live_convertsions_screen.dart';
@@ -271,7 +271,9 @@ class _MainScreenState extends State<MainScreen>
                     if (item.label == 'Leads') {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const LeadsScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const NavbarLeadsScreen(),
+                        ),
                       );
                       return;
                     }

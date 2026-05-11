@@ -23,4 +23,9 @@ class APIsEndPoints {
   static const String getTransactions = "user/api/v1/transactions";
 
   static const String getContacts = "user/api/v1/contacts";
+
+  static const String getRcsLeads = "user/api/v1/rcs/interactions";
+
+  static const String getWhatsappconversationLeads =
+      "user/api/v1/whatsapp/conversation/leads";
 }
