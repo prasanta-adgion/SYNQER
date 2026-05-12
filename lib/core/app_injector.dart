@@ -1,6 +1,7 @@
 import 'package:synqer_io/core/network/dio_methods_service.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/rcs_lead/repository/rcs_leads_repo.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/whatsapp_lead/repository/whatsapp_leads_repo.dart';
+import 'package:synqer_io/features/all_leads/website_lead/ai_lead/repository/ai_lead_repository.dart';
 import 'package:synqer_io/features/live_chat/live_conversions/repository/conversions_repo.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/repository/single_conversion_repo.dart';
 import 'package:synqer_io/features/live_chat/save_contact/repository/get_groups_repo.dart';
@@ -44,4 +45,7 @@ class AppInjector {
   static final WhatsappLeadsRepo whatsappLeadsRepo = WhatsappLeadsRepo(
     dio: dio,
   );
+
+  //get ai web leads
+  static final AiLeadRepository aiLeadRepository = AiLeadRepository(dio: dio);
 }

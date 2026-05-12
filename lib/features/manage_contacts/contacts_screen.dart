@@ -1,7 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,12 +8,12 @@ import 'package:synqer_io/app_export.dart';
 import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/theme/app_colors.dart';
+import 'package:synqer_io/core/utils/helper_methods.dart';
 import 'package:synqer_io/core/widgets/app_snackbar.dart';
 import 'package:synqer_io/core/widgets/loading_screen.dart';
 import 'package:synqer_io/features/live_chat/save_contact/bloc/get_groups_bloc.dart';
 import 'package:synqer_io/features/live_chat/save_contact/model/groups_model.dart';
 import 'package:synqer_io/features/live_chat/save_contact/save_contact_screen.dart';
-import 'package:synqer_io/core/widgets/app_custom_button.dart';
 import 'package:synqer_io/features/manage_contacts/bloc/get_contacts_bloc.dart';
 import 'package:synqer_io/features/manage_contacts/model/contacts_model.dart';
 import 'package:synqer_io/features/manage_contacts/widgets/delete_dailog.dart';
@@ -661,11 +660,7 @@ class _ContactCard extends StatelessWidget {
   });
 
   String get _initials {
-    final parts = (contact.fullName ?? '?').trim().split(' ');
-    if (parts.length >= 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return parts[0].isNotEmpty ? parts[0][0].toUpperCase() : '?';
+    return AppHelperMethods.initialsNameCharacter(contact.fullName ?? '');
   }
 
   Color get _avatarColor {

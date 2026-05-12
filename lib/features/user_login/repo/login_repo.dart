@@ -1,6 +1,7 @@
 // import 'package:synqer_io/core/constants/apis_end_points.dart';
 // import 'package:synqer_io/core/network/dio_methods_service.dart';
 
+import 'package:flutter/widgets.dart';
 import 'package:synqer_io/app_export.dart';
 
 class LoginRepo {
@@ -16,7 +17,7 @@ class LoginRepo {
       "username": email,
       "password": password,
     });
-
+    debugPrint(response.toString());
     return response;
   }
 }

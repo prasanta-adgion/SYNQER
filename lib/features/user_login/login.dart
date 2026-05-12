@@ -14,17 +14,6 @@ import 'package:synqer_io/features/dashboard/dashboard.dart';
 //  NEUTRAL TOKENS (background / surface / text only — accents come from AppColors)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _N {
-  static const Color bg = Color(0xFF080C12);
-  static const Color surface = Color(0xFF0F1520);
-  static const Color border = Color(0xFF1F2D42);
-
-  static const Color textPrimary = Color(0xFFEEF2FF);
-  static const Color textSecondary = Color(0xFF6B7A99);
-  static const Color textMuted = Color(0xFF3A4A65);
-  static const Color disabled = Color(0xFF1A2332);
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 //  LOGIN SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
@@ -93,6 +82,19 @@ class _LoginScreenState extends State<LoginScreen>
         password: password,
       );
 
+      // CHECK SUCCESS FIRST
+      if (response["success"] == false) {
+        if (!mounted) return;
+
+        AppSnackbar.show(
+          context,
+          message: response["message"] ?? "Login failed",
+          type: SnackbarType.error,
+        );
+
+        return;
+      }
+
       final token = response["userToken"];
 
       await TokenStorage.saveToken(token);
@@ -131,8 +133,10 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+
     return Scaffold(
-      backgroundColor: _N.bg,
+      backgroundColor: c.bg,
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
@@ -143,18 +147,12 @@ class _LoginScreenState extends State<LoginScreen>
           Positioned(
             left: -80,
             top: -60,
-            child: _GlowOrb(
-              size: 280,
-              color: context.colors.primary.withOpacity(0.20),
-            ),
+            child: _GlowOrb(size: 280, color: c.primary.withOpacity(0.20)),
           ),
           Positioned(
             right: -60,
             bottom: MediaQuery.of(context).size.height * 0.35,
-            child: _GlowOrb(
-              size: 200,
-              color: context.colors.secondary.withOpacity(0.15),
-            ),
+            child: _GlowOrb(size: 200, color: c.secondary.withOpacity(0.15)),
           ),
 
           SafeArea(
@@ -210,6 +208,8 @@ class _LoginScreenState extends State<LoginScreen>
   // ── Header ────────────────────────────────────────────────────────────────
 
   Widget _buildHeader(double scale) {
+    final c = context.colors;
+
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -223,10 +223,7 @@ class _LoginScreenState extends State<LoginScreen>
               // color: context.colors.primary.withOpacity(0.20),
               color: Colors.white,
               borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: context.colors.primary.withOpacity(0.5),
-                width: 1,
-              ),
+              border: Border.all(color: c.primary.withOpacity(0.5), width: 1),
             ),
 
             // child: Icon(
@@ -242,7 +239,7 @@ class _LoginScreenState extends State<LoginScreen>
             style: TextStyle(
               fontSize: 32 * scale,
               fontFamily: 'Audiowide',
-              color: _N.textPrimary,
+              color: c.textPrimary,
               letterSpacing: 7,
             ),
           ),
@@ -259,7 +256,7 @@ class _LoginScreenState extends State<LoginScreen>
                     'PROFESSIONAL NETWORK',
                     style: TextStyle(
                       fontSize: 9 * scale,
-                      color: _N.textSecondary,
+                      color: c.textSecondary,
                       letterSpacing: 3,
                       fontWeight: FontWeight.w500,
                     ),
@@ -275,19 +272,22 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _dash() => Container(width: 20, height: 1, color: _N.textMuted);
+  Widget _dash() =>
+      Container(width: 20, height: 1, color: context.colors.textMuted);
 
   // ── Card ──────────────────────────────────────────────────────────────────
 
   Widget _buildCard(double scale) {
+    final c = context.colors;
+
     return Container(
-      decoration: const BoxDecoration(
-        color: _N.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         border: Border(
-          top: BorderSide(color: _N.border, width: 1),
-          left: BorderSide(color: _N.border, width: 1),
-          right: BorderSide(color: _N.border, width: 1),
+          top: BorderSide(color: c.border, width: 1),
+          left: BorderSide(color: c.border, width: 1),
+          right: BorderSide(color: c.border, width: 1),
         ),
       ),
       padding: EdgeInsets.fromLTRB(28 * scale, 36 * scale, 28 * scale, 24),
@@ -302,14 +302,14 @@ class _LoginScreenState extends State<LoginScreen>
               style: TextStyle(
                 fontSize: 26 * scale,
                 fontWeight: FontWeight.w700,
-                color: _N.textPrimary,
+                color: c.textPrimary,
                 letterSpacing: -0.5,
               ),
             ),
             SizedBox(height: 6 * scale),
             Text(
               "Access your professional workspace",
-              style: TextStyle(fontSize: 13 * scale, color: _N.textSecondary),
+              style: TextStyle(fontSize: 13 * scale, color: c.textSecondary),
             ),
 
             SizedBox(height: 28 * scale),
@@ -353,7 +353,7 @@ class _LoginScreenState extends State<LoginScreen>
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
                     size: 18,
-                    color: _N.textSecondary,
+                    color: c.inputIcon,
                   ),
                 ),
               ),
@@ -370,7 +370,7 @@ class _LoginScreenState extends State<LoginScreen>
                   "Forgot password?",
                   style: TextStyle(
                     fontSize: 12 * scale,
-                    color: context.colors.primary,
+                    color: c.primary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -394,20 +394,18 @@ class _LoginScreenState extends State<LoginScreen>
                         width: 20,
                         height: 20,
                         decoration: BoxDecoration(
-                          color: agreed
-                              ? context.colors.primary
-                              : Colors.transparent,
+                          color: agreed ? c.primary : Colors.transparent,
                           borderRadius: BorderRadius.circular(5),
                           border: Border.all(
-                            color: agreed ? context.colors.primary : _N.border,
+                            color: agreed ? c.primary : c.border,
                             width: 1.5,
                           ),
                         ),
                         child: agreed
-                            ? const Icon(
+                            ? Icon(
                                 Icons.check_rounded,
                                 size: 13,
-                                color: Colors.white,
+                                color: c.onBrand,
                               )
                             : null,
                       ),
@@ -417,7 +415,7 @@ class _LoginScreenState extends State<LoginScreen>
                           text: TextSpan(
                             style: TextStyle(
                               fontSize: 13 * scale,
-                              color: _N.textSecondary,
+                              color: c.textSecondary,
                               height: 1.5,
                             ),
                             children: [
@@ -425,7 +423,7 @@ class _LoginScreenState extends State<LoginScreen>
                               TextSpan(
                                 text: "Terms of Service",
                                 style: TextStyle(
-                                  color: context.colors.primary,
+                                  color: c.primary,
                                   fontWeight: FontWeight.w600,
                                 ),
                                 recognizer: TapGestureRecognizer()
@@ -437,7 +435,7 @@ class _LoginScreenState extends State<LoginScreen>
                               TextSpan(
                                 text: "Privacy Policy",
                                 style: TextStyle(
-                                  color: context.colors.primary,
+                                  color: c.primary,
                                   fontWeight: FontWeight.w600,
                                 ),
                                 recognizer: TapGestureRecognizer()
@@ -501,7 +499,7 @@ class _FieldLabel extends StatelessWidget {
       style: TextStyle(
         fontSize: 12 * scale,
         fontWeight: FontWeight.w600,
-        color: _N.textSecondary,
+        color: context.colors.textSecondary,
         letterSpacing: 0.3,
       ),
     );
@@ -529,6 +527,7 @@ class _SignInButtonState extends State<_SignInButton> {
   @override
   Widget build(BuildContext context) {
     final isInteractive = widget.enabled && !widget.loading;
+    final c = context.colors;
 
     return GestureDetector(
       onTapDown: isInteractive ? (_) => setState(() => _pressed = true) : null,
@@ -550,17 +549,17 @@ class _SignInButtonState extends State<_SignInButton> {
             // Active: gradient. Loading or disabled: solid muted color.
             gradient: isInteractive
                 ? LinearGradient(
-                    colors: [context.colors.primary, context.colors.secondary],
+                    colors: [c.primary, c.secondary],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   )
                 : null,
             color: isInteractive
                 ? null
-                : (widget.loading ? _N.border : _N.disabled),
+                : (widget.loading ? c.border : c.surfaceHigh),
             borderRadius: BorderRadius.circular(14),
             border: !widget.enabled && !widget.loading
-                ? Border.all(color: _N.border, width: 1)
+                ? Border.all(color: c.border, width: 1)
                 : null,
           ),
           alignment: Alignment.center,
@@ -570,7 +569,7 @@ class _SignInButtonState extends State<_SignInButton> {
                   height: 22,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: _N.textSecondary,
+                    color: c.textSecondary,
                   ),
                 )
               : Row(
@@ -579,7 +578,7 @@ class _SignInButtonState extends State<_SignInButton> {
                     Text(
                       "Sign In",
                       style: TextStyle(
-                        color: widget.enabled ? Colors.white : _N.textMuted,
+                        color: widget.enabled ? c.onBrand : c.textMuted,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.3,
@@ -588,7 +587,7 @@ class _SignInButtonState extends State<_SignInButton> {
                     const SizedBox(width: 8),
                     Icon(
                       Icons.arrow_forward_rounded,
-                      color: widget.enabled ? Colors.white : _N.textMuted,
+                      color: widget.enabled ? c.onBrand : c.textMuted,
                       size: 17,
                     ),
                   ],
@@ -608,14 +607,28 @@ class _GridBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(painter: _GridPainter());
+    return CustomPaint(
+      painter: _GridPainter(
+        dotColor: context.colors.textPrimary.withOpacity(
+          context.isDark ? 0.04 : 0.05,
+        ),
+        lineColor: context.colors.textPrimary.withOpacity(
+          context.isDark ? 0.025 : 0.035,
+        ),
+      ),
+    );
   }
 }
 
 class _GridPainter extends CustomPainter {
+  final Color dotColor;
+  final Color lineColor;
+
+  const _GridPainter({required this.dotColor, required this.lineColor});
+
   @override
   void paint(Canvas canvas, Size size) {
-    final dotPaint = Paint()..color = Colors.white.withOpacity(0.04);
+    final dotPaint = Paint()..color = dotColor;
     const spacing = 28.0;
 
     for (double x = 0; x < size.width; x += spacing) {
@@ -625,7 +638,7 @@ class _GridPainter extends CustomPainter {
     }
 
     final linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.025)
+      ..color = lineColor
       ..strokeWidth = 0.5;
 
     for (double y = 0; y < size.height; y += 80) {
@@ -634,7 +647,8 @@ class _GridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _GridPainter oldDelegate) =>
+      oldDelegate.dotColor != dotColor || oldDelegate.lineColor != lineColor;
 }
 
 class _GlowOrb extends StatelessWidget {

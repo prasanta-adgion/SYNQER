@@ -30,7 +30,10 @@ class DeleteDialog extends StatelessWidget {
       filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5, tileMode: TileMode.clamp),
       child: Dialog(
         backgroundColor: c.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5.0)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(5.0),
+          side: BorderSide(color: c.border),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(

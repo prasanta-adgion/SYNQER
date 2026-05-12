@@ -6,84 +6,60 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
-import 'package:synqer_io/features/all_leads/channel_leads/whatsapp_lead/bloc/whatsappleads_get_bloc.dart';
-import 'package:synqer_io/features/all_leads/channel_leads/whatsapp_lead/model/whatsappleads_data_model.dart';
-import 'package:synqer_io/features/all_leads/channel_leads/whatsapp_lead/widgets/lead_card_tile.dart';
+import 'package:synqer_io/features/all_leads/website_lead/ai_lead/bloc/ai_leads_get_bloc.dart';
+import 'package:synqer_io/features/all_leads/website_lead/ai_lead/model/ai_leads_model.dart';
+import 'package:synqer_io/features/all_leads/website_lead/ai_lead/widgets/ai_lead_card.dart';
 
-// ─── Filter value mappers ──────────────────────────────────────────────────────
-
-String? _mapStatus(String? raw) {
+String? _mapContacted(String? raw) {
   switch (raw) {
-    case null:
-    case 'All':
-      return null;
-    case 'Follow Up':
-      return 'Follow Up';
-    case 'Not Interested':
-      return 'Not+Interested';
-    // case 'Interested':
-    //   return 'Interested';
-    // case 'Closed':
-    //   return 'Closed';
-    default:
-      return raw; // Pending, Interested, Closed pass through
-  }
-}
-
-String? _mapLeadType(String? raw) {
-  switch (raw) {
-    case null:
-    case 'All':
-      return null;
-    case 'General Enquiry':
-      return 'general enquiry';
-    case 'Lead':
-      return 'lead';
+    case 'Contacted':
+      return 'true';
+    case 'Not Contacted':
+      return 'false';
     default:
       return null;
   }
 }
 
-class WhatsappLeadsScreen extends StatelessWidget {
+class AiwebLeadsScreen extends StatelessWidget {
   final ValueNotifier<Map<String, dynamic>>? filtersNotifier;
 
-  const WhatsappLeadsScreen({super.key, this.filtersNotifier});
+  const AiwebLeadsScreen({super.key, this.filtersNotifier});
 
   @override
   Widget build(BuildContext context) {
     final initialFilters = filtersNotifier?.value ?? const {};
     return BlocProvider(
       create: (_) =>
-          WhatsappleadsGetBloc(whatsappLeadsRepo: AppInjector.whatsappLeadsRepo)
-            ..add(
-              FetchWhatsappLeadsEvent(
-                status: _mapStatus(initialFilters['status'] as String?),
-                leadType: _mapLeadType(initialFilters['leadType'] as String?),
+          AiLeadsGetBloc(aiLeadRepository: AppInjector.aiLeadRepository)..add(
+            FetchAiLeadsEvent(
+              isContacted: _mapContacted(
+                initialFilters['isConnected'] as String?,
               ),
             ),
-      child: _WhatsappLeadsView(filtersNotifier: filtersNotifier),
+          ),
+      child: _AiwebLeadsView(filtersNotifier: filtersNotifier),
     );
   }
 }
 
-// ─── View ───────
-
-class _WhatsappLeadsView extends StatefulWidget {
+class _AiwebLeadsView extends StatefulWidget {
   final ValueNotifier<Map<String, dynamic>>? filtersNotifier;
 
-  const _WhatsappLeadsView({this.filtersNotifier});
+  const _AiwebLeadsView({this.filtersNotifier});
 
   @override
-  State<_WhatsappLeadsView> createState() => _WhatsappLeadsViewState();
+  State<_AiwebLeadsView> createState() => _AiwebLeadsViewState();
 }
 
-class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
-  static const int _pageSize = 20;
+class _AiwebLeadsViewState extends State<_AiwebLeadsView> {
+  static const int _pageSize = 10;
   static const double _scrollTriggerOffset = 200.0;
 
   final _searchCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   Timer? _debounce;
+  String _searchValue = '';
   int? _trackedLoadPage;
 
   @override
@@ -107,12 +83,12 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
     if (!mounted) return;
     final filters = widget.filtersNotifier!.value;
     _searchCtrl.clear();
+    _searchValue = '';
     _debounce?.cancel();
     _trackedLoadPage = null;
-    context.read<WhatsappleadsGetBloc>().add(
-      FetchWhatsappLeadsEvent(
-        status: _mapStatus(filters['status'] as String?),
-        leadType: _mapLeadType(filters['leadType'] as String?),
+    context.read<AiLeadsGetBloc>().add(
+      FetchAiLeadsEvent(
+        isContacted: _mapContacted(filters['isConnected'] as String?),
       ),
     );
   }
@@ -123,11 +99,9 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
     final max = _scrollCtrl.position.maxScrollExtent;
     if (offset < max - _scrollTriggerOffset) return;
 
-    final bloc = context.read<WhatsappleadsGetBloc>();
+    final bloc = context.read<AiLeadsGetBloc>();
     final state = bloc.state;
-    if (state is! WhatsappleadsLoaded ||
-        !state.hasMore ||
-        state.isLoadingMore) {
+    if (state is! AiLeadsLoaded || !state.hasMore || state.isLoadingMore) {
       return;
     }
 
@@ -136,41 +110,44 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
     _trackedLoadPage = nextPage;
 
     bloc.add(
-      LoadMoreWhatsappLeads(
+      LoadMoreAiLeads(
         page: nextPage,
         limit: _pageSize,
-        searchValue: state.searchValue,
-        status: state.status,
-        leadType: state.leadType,
+        isContacted: state.isContacted,
       ),
     );
   }
 
   void _onSearchChanged(String query) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
+    _debounce = Timer(const Duration(milliseconds: 250), () {
       if (!mounted) return;
-      _trackedLoadPage = null;
-      final filters = widget.filtersNotifier?.value ?? const {};
-      context.read<WhatsappleadsGetBloc>().add(
-        FetchWhatsappLeadsEvent(
-          searchValue: query.trim().isEmpty ? null : query.trim(),
-          status: _mapStatus(filters['status'] as String?),
-          leadType: _mapLeadType(filters['leadType'] as String?),
-        ),
-      );
+      setState(() => _searchValue = query.trim().toLowerCase());
     });
   }
 
   void _retry() {
     _trackedLoadPage = null;
     final filters = widget.filtersNotifier?.value ?? const {};
-    context.read<WhatsappleadsGetBloc>().add(
-      FetchWhatsappLeadsEvent(
-        status: _mapStatus(filters['status'] as String?),
-        leadType: _mapLeadType(filters['leadType'] as String?),
+    context.read<AiLeadsGetBloc>().add(
+      FetchAiLeadsEvent(
+        isContacted: _mapContacted(filters['isConnected'] as String?),
       ),
     );
+  }
+
+  List<AiLeadsDataModel> _filterLeads(List<AiLeadsDataModel> leads) {
+    if (_searchValue.isEmpty) return leads;
+    return leads.where((lead) {
+      final values = [
+        lead.name,
+        lead.phone,
+        lead.email,
+        lead.widgetConfigId?.botName,
+        lead.notes,
+      ].whereType<String>().join(' ').toLowerCase();
+      return values.contains(_searchValue);
+    }).toList();
   }
 
   @override
@@ -179,7 +156,6 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
 
     return Column(
       children: [
-        // ── Header + Search ────────────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: Column(
@@ -189,7 +165,7 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
                 children: [
                   Expanded(
                     child: Text(
-                      'WhatsApp Leads',
+                      'AI Web Agent Leads',
                       style: TextStyle(
                         color: c.textPrimary,
                         fontSize: 19,
@@ -197,17 +173,17 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
                       ),
                     ),
                   ),
-                  BlocBuilder<WhatsappleadsGetBloc, WhatsappleadsGetState>(
+                  BlocBuilder<AiLeadsGetBloc, AiLeadsGetState>(
                     buildWhen: (p, n) =>
-                        (p is WhatsappleadsLoaded) !=
-                            (n is WhatsappleadsLoaded) ||
-                        (n is WhatsappleadsLoaded &&
-                            p is WhatsappleadsLoaded &&
-                            p.leads.length != n.leads.length),
+                        (p is AiLeadsLoaded) != (n is AiLeadsLoaded) ||
+                        (n is AiLeadsLoaded &&
+                            p is AiLeadsLoaded &&
+                            p.aiLeads.length != n.aiLeads.length),
                     builder: (_, state) {
-                      if (state is! WhatsappleadsLoaded) {
+                      if (state is! AiLeadsLoaded) {
                         return const SizedBox.shrink();
                       }
+                      final count = _filterLeads(state.aiLeads).length;
                       return Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
@@ -218,7 +194,7 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          '${state.leads.length} leads',
+                          '$count leads',
                           style: const TextStyle(
                             color: Color(0xFF059669),
                             fontSize: 11,
@@ -255,7 +231,7 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
                         onChanged: _onSearchChanged,
                         style: TextStyle(color: c.textPrimary, fontSize: 14),
                         decoration: InputDecoration(
-                          hintText: 'Search by name or phone...',
+                          hintText: 'Search by name, phone, email or bot...',
                           hintStyle: TextStyle(
                             color: c.textSecondary,
                             fontSize: 13,
@@ -291,25 +267,23 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
             ],
           ),
         ),
-
-        // ── Content ────────────────────────────────────────────────────────────
         Expanded(
-          child: BlocBuilder<WhatsappleadsGetBloc, WhatsappleadsGetState>(
+          child: BlocBuilder<AiLeadsGetBloc, AiLeadsGetState>(
             builder: (context, state) {
-              if (state is WhatsappleadsGetInitial ||
-                  state is WhatsappleadsGetLoading) {
+              if (state is AiLeadsGetInitial || state is AiLeadsGetLoading) {
                 return const _LoadingView();
               }
-              if (state is WhatsappleadsGetError) {
+              if (state is AiLeadsGetError) {
                 return _ErrorView(message: state.errorMessage, onRetry: _retry);
               }
-              if (state is WhatsappleadsLoaded) {
-                if (state.leads.isEmpty) return const _EmptyView();
+              if (state is AiLeadsLoaded) {
+                final leads = _filterLeads(state.aiLeads);
+                if (leads.isEmpty) return const _EmptyView();
                 return _LeadsList(
-                  leads: state.leads,
-                  hasMore: state.hasMore,
+                  leads: leads,
                   isLoadingMore: state.isLoadingMore,
                   scrollController: _scrollCtrl,
+                  onRefresh: _retry,
                 );
               }
               return const SizedBox.shrink();
@@ -321,37 +295,33 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
   }
 }
 
-// ─── Leads list ─────
-
 class _LeadsList extends StatelessWidget {
-  final List<WhatsappLeadsDataModel> leads;
-  final bool hasMore;
+  final List<AiLeadsDataModel> leads;
   final bool isLoadingMore;
   final ScrollController scrollController;
+  final FutureOr<void> Function() onRefresh;
 
   const _LeadsList({
     required this.leads,
-    required this.hasMore,
     required this.isLoadingMore,
     required this.scrollController,
+    required this.onRefresh,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      controller: scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      itemCount: leads.length + (isLoadingMore ? 1 : 0),
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        if (index >= leads.length) return const _LoadMoreIndicator();
-        return LeadCardTile(
-          lead: leads[index],
-          onRefresh: () async {
-            context.read<WhatsappleadsGetBloc>().add(FetchWhatsappLeadsEvent());
-          },
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: () async => onRefresh(),
+      child: ListView.separated(
+        controller: scrollController,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        itemCount: leads.length + (isLoadingMore ? 1 : 0),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          if (index >= leads.length) return const _LoadMoreIndicator();
+          return LeadCardTile(lead: leads[index]);
+        },
+      ),
     );
   }
 }
@@ -433,7 +403,7 @@ class _ShimmerCardState extends State<_ShimmerCard>
                             _Bone(width: 130, height: 13, color: shim),
                             const Spacer(),
                             _Bone(
-                              width: 60,
+                              width: 70,
                               height: 20,
                               borderRadius: 20,
                               color: shim,
@@ -441,7 +411,9 @@ class _ShimmerCardState extends State<_ShimmerCard>
                           ],
                         ),
                         const SizedBox(height: 7),
-                        _Bone(width: 100, height: 11, color: shim),
+                        _Bone(width: 130, height: 11, color: shim),
+                        const SizedBox(height: 7),
+                        _Bone(width: 170, height: 11, color: shim),
                       ],
                     ),
                   ),
@@ -452,23 +424,9 @@ class _ShimmerCardState extends State<_ShimmerCard>
               const SizedBox(height: 10),
               Row(
                 children: [
-                  _Bone(width: 90, height: 20, borderRadius: 8, color: shim),
+                  _Bone(width: 110, height: 20, borderRadius: 8, color: shim),
                   const Spacer(),
-                  _Bone(width: 70, height: 11, color: shim),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _Bone(height: 1, color: shim),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _Bone(height: 32, borderRadius: 10, color: shim),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _Bone(height: 32, borderRadius: 10, color: shim),
-                  ),
+                  _Bone(width: 90, height: 11, color: shim),
                 ],
               ),
             ],
@@ -505,8 +463,6 @@ class _Bone extends StatelessWidget {
   }
 }
 
-// ─── Load more indicator ──────────────────────────────────────────────────────
-
 class _LoadMoreIndicator extends StatelessWidget {
   const _LoadMoreIndicator();
 
@@ -526,8 +482,6 @@ class _LoadMoreIndicator extends StatelessWidget {
   }
 }
 
-// ─── Empty view ───────────────────────────────────────────────────────────────
-
 class _EmptyView extends StatelessWidget {
   const _EmptyView();
 
@@ -543,8 +497,8 @@ class _EmptyView extends StatelessWidget {
             Container(
               width: 72,
               height: 72,
-              decoration: BoxDecoration(
-                color: const Color(0x26059669),
+              decoration: const BoxDecoration(
+                color: Color(0x26059669),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -555,7 +509,7 @@ class _EmptyView extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'No WhatsApp Leads Found',
+              'No AI Web Leads Found',
               style: TextStyle(
                 color: c.textPrimary,
                 fontSize: 16,
@@ -578,8 +532,6 @@ class _EmptyView extends StatelessWidget {
     );
   }
 }
-
-// ─── Error view ───────────────────────────────────────────────────────────────
 
 class _ErrorView extends StatelessWidget {
   final String message;

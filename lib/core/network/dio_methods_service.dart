@@ -125,6 +125,24 @@ class DioMethodsService {
     }
   }
 
+  Future<Map<String, dynamic>> patch(
+    String endpoint,
+    Map<String, dynamic> body, {
+    bool requiresAuth = true,
+  }) async {
+    try {
+      final response = await _dio.patch(
+        endpoint,
+        data: body,
+        options: Options(extra: {'requiresAuth': requiresAuth}),
+      );
+
+      return response.data;
+    } on DioException catch (e) {
+      return _handleError(e);
+    }
+  }
+
   Future<Map<String, dynamic>> delete(
     String endpoint, {
     Map<String, dynamic>? body,

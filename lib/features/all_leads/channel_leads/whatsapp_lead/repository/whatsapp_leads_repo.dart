@@ -26,8 +26,7 @@ class WhatsappLeadsRepo {
         if (leadType != null && leadType.isNotEmpty) "leadType": leadType,
       },
     );
-    debugPrint(status.toString());
-    debugPrint(leadType.toString());
+
     final bool success = response['success'] == true;
 
     final String message = response['success'].toString() == 'true'
@@ -68,6 +67,33 @@ class WhatsappLeadsRepo {
 
       data: data,
     );
+  }
+
+  Future<dynamic> updateLeadStatus({
+    required String leadId,
+    String? status,
+    String? remark,
+    String? leadType,
+    String? name,
+  }) async {
+    final response = await dio
+        .patch(APIsEndPoints.updateWhatsappLead(leadId), requiresAuth: true, {
+          "status": status,
+          if (name != null && name.isNotEmpty) 'name': name,
+          if (remark != null && remark.isNotEmpty) "remarks": remark,
+          if (leadType != null && leadType.isNotEmpty) 'leadType': leadType,
+        });
+    debugPrint(response.toString());
+
+    return response;
+  }
+
+  Future<dynamic> deleteLead({required String leadId}) async {
+    final response = await dio.delete(
+      APIsEndPoints.deleteWhatsappLead(leadId),
+      requiresAuth: true,
+    );
+    return response;
   }
 }
 

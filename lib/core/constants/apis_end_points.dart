@@ -28,4 +28,16 @@ class APIsEndPoints {
 
   static const String getWhatsappconversationLeads =
       "user/api/v1/whatsapp/conversation/leads";
+
+  static String updateWhatsappLead(String id) =>
+      "user/api/v1/whatsapp/conversation/leads/$id";
+
+  static String deleteWhatsappLead(String id) =>
+      "user/api/v1/whatsapp/conversation/leads/$id";
+
+  static const getAiWebLeads = "api/v1/my/widget/leads";
+
+  static String updateAiWebLead(String id) => "api/v1/my/widget/leads/$id";
+
+  static String deleteAiWebLead(String id) => "api/v1/my/widget/leads/$id";
 }

@@ -9,6 +9,7 @@ import 'package:synqer_io/core/widgets/custom_appbar.dart';
 import 'package:synqer_io/core/widgets/icon_button.dart';
 import 'package:synqer_io/core/widgets/theme_toggle_button.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/whatsapp_lead/whatsapp_leads_screen.dart';
+import 'package:synqer_io/features/all_leads/website_lead/ai_lead/aiweb_leads_screen.dart';
 import 'package:synqer_io/features/all_leads/widgets/lead_filter_sheet.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/rcs_lead/rcs_leads_screen.dart';
 import 'package:synqer_io/features/all_leads/widgets/lead_tab_shell.dart';
@@ -44,27 +45,6 @@ class _NavbarLeadsScreenState extends State<NavbarLeadsScreen> {
     'isRead': 'All',
     'isConnected': 'All',
   });
-
-  static const _aiAgentLeads = [
-    {
-      'name': 'Meera Kapoor',
-      'phone': '+91 99887 77665',
-      'tag': 'Hot',
-      'time': '18m ago',
-    },
-    {
-      'name': 'Dev Malhotra',
-      'phone': '+91 88776 66554',
-      'tag': 'Warm',
-      'time': '3h ago',
-    },
-    {
-      'name': 'Nisha Rao',
-      'phone': '+91 77665 55443',
-      'tag': 'Cold',
-      'time': '7h ago',
-    },
-  ];
 
   static const _webFormLeads = [
     {
@@ -253,13 +233,9 @@ class _NavbarLeadsScreenState extends State<NavbarLeadsScreen> {
               key: const ValueKey('web'),
               tabs: const ['AI Web Agent Leads', 'Web Form Leads'],
               onTabChanged: (i) => _webTabIndex.value = i,
-              children: const [
-                _LeadListView(
-                  title: 'AI Web Agent Leads',
-                  searchHint: 'Search AI web agent leads...',
-                  leads: _aiAgentLeads,
-                ),
-                _LeadListView(
+              children: [
+                AiwebLeadsScreen(filtersNotifier: _aiAgentFilters),
+                const _LeadListView(
                   title: 'Web Form Leads',
                   searchHint: 'Search web form leads...',
                   leads: _webFormLeads,
