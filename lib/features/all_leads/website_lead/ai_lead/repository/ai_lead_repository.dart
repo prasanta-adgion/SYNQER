@@ -23,7 +23,7 @@ class AiLeadRepository {
         "limit": limit,
       },
     );
-    debugPrint(isContacted.toString());
+
     final bool success = response['success'] == true;
 
     final String message = response['success'].toString() == 'true'
@@ -68,14 +68,16 @@ class AiLeadRepository {
 
   Future<dynamic> updateAiWebLead({
     required String id,
-    String? isContacted,
+    bool? isContacted,
     String? notes,
   }) async {
     final response = await dio.patch(APIsEndPoints.updateAiWebLead(id), {
       if (notes != null && notes.isNotEmpty) "notes": notes,
-      if (isContacted != null && isContacted.isNotEmpty)
-        "isContacted": isContacted,
+      if (isContacted != null) "isContacted": isContacted,
     });
+    debugPrint('---------- Update AI lead ----------');
+    debugPrint(response.toString());
+    debugPrint(isContacted.toString());
 
     return response;
   }

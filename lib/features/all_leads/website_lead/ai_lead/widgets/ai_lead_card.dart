@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/utils/helper_methods.dart';
-import 'package:synqer_io/core/widgets/app_custom_button.dart';
+import 'package:synqer_io/core/widgets/app_popover_dailog.dart';
 import 'package:synqer_io/core/widgets/app_snackbar.dart';
 import 'package:synqer_io/features/all_leads/website_lead/ai_lead/model/ai_leads_model.dart';
+import 'package:synqer_io/features/all_leads/website_lead/ai_lead/widgets/ailead_edit_sheet.dart';
 import 'package:synqer_io/features/manage_contacts/widgets/delete_dailog.dart';
 
 String _sanitize(String? s) {
@@ -43,11 +44,11 @@ String _fmtPhone(String raw) {
   return raw.isNotEmpty ? '+$raw' : '-';
 }
 
-class LeadCardTile extends StatelessWidget {
+class AiWebLeadCardTile extends StatelessWidget {
   final AiLeadsDataModel lead;
   final Future<void> Function()? onRefresh;
 
-  const LeadCardTile({super.key, required this.lead, this.onRefresh});
+  const AiWebLeadCardTile({super.key, required this.lead, this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +108,40 @@ class LeadCardTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _StatusBadge(isContacted: lead.isContacted == true),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _StatusBadge(isContacted: lead.isContacted == true),
+                    const SizedBox(width: 6),
+                    Builder(
+                      builder: (buttonContext) {
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () => _showActionsPopover(
+                            context: context,
+                            buttonContext: buttonContext,
+                            lead: lead,
+                          ),
+                          child: Container(
+                            width: 30,
+                            height: 30,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: c.surfaceHigh,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: c.border),
+                            ),
+                            child: Icon(
+                              Icons.more_vert,
+                              size: 18,
+                              color: c.textSecondary,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -167,52 +201,41 @@ class LeadCardTile extends StatelessWidget {
           ],
 
           // ── Actions ──
-          Divider(height: 1, color: c.border),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: AppButton(
-                    text: "Edit",
-                    icon: Icons.edit_outlined,
-                    onPressed: () {},
-                    bgColor: c.accentSoft,
-                    textColor: c.primary,
-                    iconColor: c.primary,
-                    borderColor: c.primary.withOpacity(0.15),
-                    borderWidth: 1,
-                    btnHeight: 40,
-                    borderRadius: 35,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-                Expanded(
-                  child: AppButton(
-                    text: "Delete",
-                    icon: Icons.delete_outline_rounded,
-                    onPressed: () => _showDeleteDialog(context, lead),
-                    bgColor: c.dangerSoft,
-                    textColor: c.error,
-                    iconColor: c.error,
-                    borderColor: c.error.withOpacity(0.20),
-                    borderWidth: 1,
-                    btnHeight: 40,
-                    borderRadius: 35,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
+  }
+
+  void _showActionsPopover({
+    required BuildContext context,
+    required BuildContext buttonContext,
+    required AiLeadsDataModel lead,
+  }) {
+    final c = context.colors;
+
+    AppPopoverMenu.show(
+      context: context,
+      buttonContext: buttonContext,
+      width: 180,
+      items: [
+        AppPopoverItem(
+          title: 'Edit',
+          icon: Icons.edit_outlined,
+          iconColor: c.primary,
+          onTap: () => _showEditDialog(context, lead),
+        ),
+        AppPopoverItem(
+          title: 'Delete',
+          icon: Icons.delete_outline_rounded,
+          isDestructive: true,
+          onTap: () => _showDeleteDialog(context, lead),
+        ),
+      ],
+    );
+  }
+
+  void _showEditDialog(BuildContext context, AiLeadsDataModel lead) {
+    AILeadEditBottomSheet.show(context, lead, onRefresh: onRefresh);
   }
 
   void _showDeleteDialog(BuildContext context, AiLeadsDataModel lead) {

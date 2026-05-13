@@ -1,7 +1,5 @@
 // ignore_for_file: deprecated_member_use
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +7,8 @@ import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/rcs_lead/bloc/rcs_leadsget_bloc.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/rcs_lead/model/rcsleads_data_model.dart';
+import 'package:synqer_io/features/all_leads/widgets/empty_view.dart';
+import 'package:synqer_io/features/search_bar/search_bar_screen.dart';
 
 // ─── Filter helpers ───────────────────────────────────────────────────────────
 
@@ -67,7 +67,6 @@ class _RcsLeadsViewState extends State<_RcsLeadsView> {
 
   final _searchCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
-  Timer? _debounce;
   int? _trackedLoadPage;
 
   @override
@@ -83,7 +82,6 @@ class _RcsLeadsViewState extends State<_RcsLeadsView> {
     _scrollCtrl.removeListener(_onScroll);
     _scrollCtrl.dispose();
     _searchCtrl.dispose();
-    _debounce?.cancel();
     super.dispose();
   }
 
@@ -91,7 +89,6 @@ class _RcsLeadsViewState extends State<_RcsLeadsView> {
     if (!mounted) return;
     final filters = widget.filtersNotifier!.value;
     _searchCtrl.clear();
-    _debounce?.cancel();
     _trackedLoadPage = null;
     context.read<RcsLeadsgetBloc>().add(
       FetchRcsLeadsEvent(
@@ -131,20 +128,16 @@ class _RcsLeadsViewState extends State<_RcsLeadsView> {
   }
 
   void _onSearchChanged(String query) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      _trackedLoadPage = null;
-      final filters = widget.filtersNotifier?.value ?? const {};
-      context.read<RcsLeadsgetBloc>().add(
-        FetchRcsLeadsEvent(
-          searchValue: query.trim().isEmpty ? null : query.trim(),
-          eventType: _mapEventType(filters['eventType'] as String?),
-          fromDate: _fmtDate(filters['fromDate'] as DateTime?),
-          toDate: _fmtDate(filters['toDate'] as DateTime?),
-        ),
-      );
-    });
+    _trackedLoadPage = null;
+    final filters = widget.filtersNotifier?.value ?? const {};
+    context.read<RcsLeadsgetBloc>().add(
+      FetchRcsLeadsEvent(
+        searchValue: query.trim().isEmpty ? null : query.trim(),
+        eventType: _mapEventType(filters['eventType'] as String?),
+        fromDate: _fmtDate(filters['fromDate'] as DateTime?),
+        toDate: _fmtDate(filters['toDate'] as DateTime?),
+      ),
+    );
   }
 
   void _retry() {
@@ -216,63 +209,11 @@ class _RcsLeadsViewState extends State<_RcsLeadsView> {
                 ],
               ),
               const SizedBox(height: 12),
-              // Search bar
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: c.surface,
-                  borderRadius: BorderRadius.circular(13),
-                  border: Border.all(color: c.border),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.search_rounded,
-                      color: c.textSecondary,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchCtrl,
-                        onChanged: _onSearchChanged,
-                        style: TextStyle(color: c.textPrimary, fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: 'Search by mobile number...',
-                          hintStyle: TextStyle(
-                            color: c.textSecondary,
-                            fontSize: 13,
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                    ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: _searchCtrl,
-                      builder: (_, val, _) {
-                        if (val.text.isEmpty) return const SizedBox.shrink();
-                        return GestureDetector(
-                          onTap: () {
-                            _searchCtrl.clear();
-                            _onSearchChanged('');
-                          },
-                          child: Icon(
-                            Icons.close_rounded,
-                            color: c.textSecondary,
-                            size: 16,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+              ReusableSearchBar(
+                controller: _searchCtrl,
+                hintText: 'Search by mobile number...',
+                debounceDuration: const Duration(milliseconds: 500),
+                onChanged: _onSearchChanged,
               ),
             ],
           ),
@@ -289,7 +230,26 @@ class _RcsLeadsViewState extends State<_RcsLeadsView> {
                 return _ErrorView(message: state.errorMessage, onRetry: _retry);
               }
               if (state is RcsLeadsLoaded) {
-                if (state.rcsLeads.isEmpty) return const _EmptyView();
+                if (state.rcsLeads.isEmpty) {
+                  return EmptyView(
+                    title: 'No RCS Leads Found',
+                    subtitle:
+                        'No leads match your current filters.\nTry adjusting the search or filter options.',
+                    iconWidget: Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: c.accentSoft,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.inbox_rounded,
+                        color: c.primary,
+                        size: 32,
+                      ),
+                    ),
+                  );
+                }
                 return _LeadsList(
                   leads: state.rcsLeads,
                   hasMore: state.hasMore,
@@ -1259,50 +1219,3 @@ class _ErrorView extends StatelessWidget {
 }
 
 // ─── Empty View ───────────────────────────────────────────────────────────────
-
-class _EmptyView extends StatelessWidget {
-  const _EmptyView();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: c.accentSoft,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.inbox_rounded, color: c.primary, size: 32),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No RCS Leads Found',
-              style: TextStyle(
-                color: c.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'No leads match your current filters.\nTry adjusting the search or filter options.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: c.textSecondary,
-                fontSize: 13,
-                height: 1.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -8,11 +8,11 @@ import 'package:synqer_io/features/splash_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── Theme Controller ─────────────────────────────
+  // ── Theme Controller ──
   final themeController = ThemeController();
   await themeController.load();
 
-  // ── Auth Token ───────────────────────────────────
+  // ── Auth Token ──
   final token = await TokenStorage.getToken();
   if (token != null) {
     AppInjector.dio.updateToken(token);

@@ -1,13 +1,17 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/core/utils/app_configarations.dart';
 import 'package:synqer_io/core/utils/helper_methods.dart';
 import 'package:synqer_io/core/widgets/app_custom_button.dart';
+import 'package:synqer_io/core/widgets/app_popover_dailog.dart';
 import 'package:synqer_io/core/widgets/app_snackbar.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/whatsapp_lead/model/whatsappleads_data_model.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/whatsapp_lead/widgets/edit_lead_data.dart';
+import 'package:synqer_io/features/live_chat/single_conversion/single_conversions_screen.dart';
 import 'package:synqer_io/features/manage_contacts/widgets/delete_dailog.dart';
 
 String _sanitize(String? s) {
@@ -44,6 +48,14 @@ String _fmtPhone(String raw) {
     return '+91 ${digits.substring(0, 5)} ${digits.substring(5)}';
   }
   return raw.isNotEmpty ? '+$raw' : '—';
+}
+
+String _phoneForDial(String raw) => raw.replaceAll(RegExp(r'\D'), '');
+
+String _phoneForWhatsApp(String raw) {
+  final digits = _phoneForDial(raw);
+  if (digits.length == 10) return '91$digits';
+  return digits;
 }
 
 class LeadCardTile extends StatelessWidget {
@@ -101,29 +113,65 @@ class LeadCardTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.phone_outlined,
-                            size: 12,
-                            color: c.textMuted,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            phone,
-                            style: TextStyle(
-                              color: c.textSecondary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.phone_outlined,
+                              size: 12,
+                              color: c.textMuted,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 4),
+                            Text(
+                              phone,
+                              style: TextStyle(
+                                color: c.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                if (status.isNotEmpty) _StatusBadge(status: status),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (status.isNotEmpty) _StatusBadge(status: status),
+                    const SizedBox(width: 6),
+                    Builder(
+                      builder: (buttonContext) {
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () => _showActionsPopover(
+                            context: context,
+                            buttonContext: buttonContext,
+                            lead: lead,
+                          ),
+                          child: Container(
+                            width: 30,
+                            height: 30,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: c.surfaceHigh,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: c.border),
+                            ),
+                            child: Icon(
+                              Icons.more_vert,
+                              size: 18,
+                              color: c.textSecondary,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -239,13 +287,17 @@ class LeadCardTile extends StatelessWidget {
               children: [
                 Expanded(
                   child: AppButton(
-                    text: "Edit",
-                    icon: Icons.edit_outlined,
-                    onPressed: () => _showEditDialog(context, lead),
-                    bgColor: c.accentSoft,
-                    textColor: c.primary,
-                    iconColor: c.primary,
-                    borderColor: c.primary.withOpacity(0.20),
+                    text: 'WhatsApp',
+                    // icon: Icons.chat_outlined,
+                    iconWidget: FaIcon(
+                      FontAwesomeIcons.whatsapp,
+                      color: Colors.green,
+                    ),
+                    onPressed: () => _openWhatsApp(context, lead),
+                    bgColor: c.successSoft,
+                    textColor: c.green,
+                    iconColor: c.green,
+                    borderColor: c.green.withOpacity(0.20),
                     borderWidth: 1,
                     btnHeight: 40,
                     borderRadius: 35,
@@ -253,18 +305,16 @@ class LeadCardTile extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-
                 const SizedBox(width: 8),
-
                 Expanded(
                   child: AppButton(
-                    text: "Delete",
-                    icon: Icons.delete_outline_rounded,
-                    onPressed: () => _showDeleteDialog(context, lead),
-                    bgColor: c.dangerSoft,
-                    textColor: c.error,
-                    iconColor: c.error,
-                    borderColor: c.error.withOpacity(0.20),
+                    text: 'Call',
+                    icon: Icons.call_outlined,
+                    onPressed: () => _callLead(context, lead),
+                    bgColor: c.accentSoft,
+                    textColor: c.primary,
+                    iconColor: c.primary,
+                    borderColor: c.primary.withOpacity(0.20),
                     borderWidth: 1,
                     btnHeight: 40,
                     borderRadius: 35,
@@ -277,6 +327,86 @@ class LeadCardTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _openWhatsApp(
+    BuildContext context,
+    WhatsappLeadsDataModel lead,
+  ) async {
+    final phone = _phoneForWhatsApp(lead.phoneNumber ?? '');
+    if (phone.isEmpty) {
+      AppSnackbar.show(
+        context,
+        message: 'Phone number not available',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
+    try {
+      // await AppConfig.openWebsite('https://wa.me/$phone');
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SingleConversionsBlocProviderWrapper(
+            customerNumber: phone.toString(),
+            customerName: lead.name ?? '',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      AppSnackbar.show(
+        context,
+        message: 'Could not open WhatsApp',
+        type: SnackbarType.error,
+      );
+    }
+  }
+
+  Future<void> _callLead(
+    BuildContext context,
+    WhatsappLeadsDataModel lead,
+  ) async {
+    final phone = _phoneForDial(lead.phoneNumber ?? '');
+    if (phone.isEmpty) {
+      AppSnackbar.show(
+        context,
+        message: 'Phone number not available',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
+    await AppConfig.launchCaller(phone);
+  }
+
+  void _showActionsPopover({
+    required BuildContext context,
+    required BuildContext buttonContext,
+    required WhatsappLeadsDataModel lead,
+  }) {
+    final c = context.colors;
+
+    AppPopoverMenu.show(
+      context: context,
+      buttonContext: buttonContext,
+      width: 180,
+      items: [
+        AppPopoverItem(
+          title: 'Edit',
+          icon: Icons.edit_outlined,
+          iconColor: c.primary,
+          onTap: () => _showEditDialog(context, lead),
+        ),
+        AppPopoverItem(
+          title: 'Delete',
+          icon: Icons.delete_outline_rounded,
+          isDestructive: true,
+          onTap: () => _showDeleteDialog(context, lead),
+        ),
+      ],
     );
   }
 
@@ -360,10 +490,8 @@ class _Avatar extends StatelessWidget {
   final String name;
   const _Avatar({required this.name});
 
-  String get _initials => AppHelperMethods.initialsNameCharacter(
-    _sanitize(name),
-    // name,
-  );
+  String get _initials =>
+      AppHelperMethods.initialsNameCharacter(_sanitize(name));
 
   @override
   Widget build(BuildContext context) {

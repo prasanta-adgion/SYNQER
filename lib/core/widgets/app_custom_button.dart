@@ -8,6 +8,7 @@ class AppButton extends StatelessWidget {
 
   // Optional features
   final IconData? icon;
+  final Widget? iconWidget;
   final Color? iconColor;
   final double? fontSize;
   final FontWeight? fontWeight;
@@ -28,6 +29,7 @@ class AppButton extends StatelessWidget {
     required this.bgColor,
     this.child,
     this.icon,
+    this.iconWidget,
     this.iconColor,
     this.fontSize,
     this.fontWeight,
@@ -98,11 +100,16 @@ class AppButton extends StatelessWidget {
     // =========================
     // Icon + Text
     // =========================
-    else if (icon != null) {
+    else if (iconWidget != null || icon != null) {
       buttonChild = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: iconColor ?? (textColor ?? Colors.white), size: 18),
+          iconWidget ??
+              Icon(
+                icon,
+                color: iconColor ?? (textColor ?? Colors.white),
+                size: 18,
+              ),
           const SizedBox(width: 8),
           Text(text, style: textStyle),
         ],

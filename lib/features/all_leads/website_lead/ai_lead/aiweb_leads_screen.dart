@@ -9,6 +9,8 @@ import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/features/all_leads/website_lead/ai_lead/bloc/ai_leads_get_bloc.dart';
 import 'package:synqer_io/features/all_leads/website_lead/ai_lead/model/ai_leads_model.dart';
 import 'package:synqer_io/features/all_leads/website_lead/ai_lead/widgets/ai_lead_card.dart';
+import 'package:synqer_io/features/all_leads/widgets/empty_view.dart';
+import 'package:synqer_io/features/search_bar/search_bar_screen.dart';
 
 String? _mapContacted(String? raw) {
   switch (raw) {
@@ -58,7 +60,6 @@ class _AiwebLeadsViewState extends State<_AiwebLeadsView> {
 
   final _searchCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
-  Timer? _debounce;
   String _searchValue = '';
   int? _trackedLoadPage;
 
@@ -75,7 +76,6 @@ class _AiwebLeadsViewState extends State<_AiwebLeadsView> {
     _scrollCtrl.removeListener(_onScroll);
     _scrollCtrl.dispose();
     _searchCtrl.dispose();
-    _debounce?.cancel();
     super.dispose();
   }
 
@@ -84,7 +84,6 @@ class _AiwebLeadsViewState extends State<_AiwebLeadsView> {
     final filters = widget.filtersNotifier!.value;
     _searchCtrl.clear();
     _searchValue = '';
-    _debounce?.cancel();
     _trackedLoadPage = null;
     context.read<AiLeadsGetBloc>().add(
       FetchAiLeadsEvent(
@@ -119,11 +118,7 @@ class _AiwebLeadsViewState extends State<_AiwebLeadsView> {
   }
 
   void _onSearchChanged(String query) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 250), () {
-      if (!mounted) return;
-      setState(() => _searchValue = query.trim().toLowerCase());
-    });
+    setState(() => _searchValue = query.trim().toLowerCase());
   }
 
   void _retry() {
@@ -207,62 +202,11 @@ class _AiwebLeadsViewState extends State<_AiwebLeadsView> {
                 ],
               ),
               const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: c.surface,
-                  borderRadius: BorderRadius.circular(13),
-                  border: Border.all(color: c.border),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.search_rounded,
-                      color: c.textSecondary,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchCtrl,
-                        onChanged: _onSearchChanged,
-                        style: TextStyle(color: c.textPrimary, fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: 'Search by name, phone, email or bot...',
-                          hintStyle: TextStyle(
-                            color: c.textSecondary,
-                            fontSize: 13,
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                    ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: _searchCtrl,
-                      builder: (_, val, _) {
-                        if (val.text.isEmpty) return const SizedBox.shrink();
-                        return GestureDetector(
-                          onTap: () {
-                            _searchCtrl.clear();
-                            _onSearchChanged('');
-                          },
-                          child: Icon(
-                            Icons.close_rounded,
-                            color: c.textSecondary,
-                            size: 16,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+              ReusableSearchBar(
+                controller: _searchCtrl,
+                hintText: 'Search by name, phone, email or bot...',
+                debounceDuration: const Duration(milliseconds: 250),
+                onChanged: _onSearchChanged,
               ),
             ],
           ),
@@ -278,7 +222,25 @@ class _AiwebLeadsViewState extends State<_AiwebLeadsView> {
               }
               if (state is AiLeadsLoaded) {
                 final leads = _filterLeads(state.aiLeads);
-                if (leads.isEmpty) return const _EmptyView();
+                if (leads.isEmpty) {
+                  return EmptyView(
+                    title: 'No AI Web Leads Found',
+                    subtitle: 'No leads match your current filter',
+                    iconWidget: Container(
+                      width: 72,
+                      height: 72,
+                      decoration: const BoxDecoration(
+                        color: Color(0x26059669),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.inbox_rounded,
+                        color: Color(0xFF059669),
+                        size: 32,
+                      ),
+                    ),
+                  );
+                }
                 return _LeadsList(
                   leads: leads,
                   isLoadingMore: state.isLoadingMore,
@@ -319,7 +281,12 @@ class _LeadsList extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           if (index >= leads.length) return const _LoadMoreIndicator();
-          return LeadCardTile(lead: leads[index]);
+          return AiWebLeadCardTile(
+            lead: leads[index],
+            onRefresh: () async {
+              context.read<AiLeadsGetBloc>().add(FetchAiLeadsEvent());
+            },
+          );
         },
       ),
     );
@@ -476,57 +443,6 @@ class _LoadMoreIndicator extends StatelessWidget {
           width: 22,
           height: 22,
           child: CircularProgressIndicator(strokeWidth: 2.5, color: c.primary),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyView extends StatelessWidget {
-  const _EmptyView();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: const BoxDecoration(
-                color: Color(0x26059669),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.inbox_rounded,
-                color: Color(0xFF059669),
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No AI Web Leads Found',
-              style: TextStyle(
-                color: c.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'No leads match your current filters.\nTry adjusting the search or filter options.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: c.textSecondary,
-                fontSize: 13,
-                height: 1.5,
-              ),
-            ),
-          ],
         ),
       ),
     );

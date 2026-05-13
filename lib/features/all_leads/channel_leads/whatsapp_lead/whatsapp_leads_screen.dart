@@ -1,7 +1,5 @@
 // ignore_for_file: deprecated_member_use
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:synqer_io/core/app_injector.dart';
@@ -9,6 +7,8 @@ import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/whatsapp_lead/bloc/whatsappleads_get_bloc.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/whatsapp_lead/model/whatsappleads_data_model.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/whatsapp_lead/widgets/lead_card_tile.dart';
+import 'package:synqer_io/features/all_leads/widgets/empty_view.dart';
+import 'package:synqer_io/features/search_bar/search_bar_screen.dart';
 
 // ─── Filter value mappers ──────────────────────────────────────────────────────
 
@@ -83,7 +83,6 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
 
   final _searchCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
-  Timer? _debounce;
   int? _trackedLoadPage;
 
   @override
@@ -99,7 +98,6 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
     _scrollCtrl.removeListener(_onScroll);
     _scrollCtrl.dispose();
     _searchCtrl.dispose();
-    _debounce?.cancel();
     super.dispose();
   }
 
@@ -107,7 +105,6 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
     if (!mounted) return;
     final filters = widget.filtersNotifier!.value;
     _searchCtrl.clear();
-    _debounce?.cancel();
     _trackedLoadPage = null;
     context.read<WhatsappleadsGetBloc>().add(
       FetchWhatsappLeadsEvent(
@@ -147,19 +144,15 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
   }
 
   void _onSearchChanged(String query) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      _trackedLoadPage = null;
-      final filters = widget.filtersNotifier?.value ?? const {};
-      context.read<WhatsappleadsGetBloc>().add(
-        FetchWhatsappLeadsEvent(
-          searchValue: query.trim().isEmpty ? null : query.trim(),
-          status: _mapStatus(filters['status'] as String?),
-          leadType: _mapLeadType(filters['leadType'] as String?),
-        ),
-      );
-    });
+    _trackedLoadPage = null;
+    final filters = widget.filtersNotifier?.value ?? const {};
+    context.read<WhatsappleadsGetBloc>().add(
+      FetchWhatsappLeadsEvent(
+        searchValue: query.trim().isEmpty ? null : query.trim(),
+        status: _mapStatus(filters['status'] as String?),
+        leadType: _mapLeadType(filters['leadType'] as String?),
+      ),
+    );
   }
 
   void _retry() {
@@ -231,62 +224,11 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
                 ],
               ),
               const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: c.surface,
-                  borderRadius: BorderRadius.circular(13),
-                  border: Border.all(color: c.border),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.search_rounded,
-                      color: c.textSecondary,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchCtrl,
-                        onChanged: _onSearchChanged,
-                        style: TextStyle(color: c.textPrimary, fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: 'Search by name or phone...',
-                          hintStyle: TextStyle(
-                            color: c.textSecondary,
-                            fontSize: 13,
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                    ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: _searchCtrl,
-                      builder: (_, val, _) {
-                        if (val.text.isEmpty) return const SizedBox.shrink();
-                        return GestureDetector(
-                          onTap: () {
-                            _searchCtrl.clear();
-                            _onSearchChanged('');
-                          },
-                          child: Icon(
-                            Icons.close_rounded,
-                            color: c.textSecondary,
-                            size: 16,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+              ReusableSearchBar(
+                controller: _searchCtrl,
+                hintText: 'Search by name or phone...',
+                debounceDuration: const Duration(milliseconds: 500),
+                onChanged: _onSearchChanged,
               ),
             ],
           ),
@@ -304,7 +246,26 @@ class _WhatsappLeadsViewState extends State<_WhatsappLeadsView> {
                 return _ErrorView(message: state.errorMessage, onRetry: _retry);
               }
               if (state is WhatsappleadsLoaded) {
-                if (state.leads.isEmpty) return const _EmptyView();
+                if (state.leads.isEmpty) {
+                  return EmptyView(
+                    title: 'No WhatsApp Leads Found',
+                    subtitle:
+                        'No leads match your current filters.\nTry adjusting the search or filter options.',
+                    iconWidget: Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: const Color(0x26059669),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.inbox_rounded,
+                        color: Color(0xFF059669),
+                        size: 32,
+                      ),
+                    ),
+                  );
+                }
                 return _LeadsList(
                   leads: state.leads,
                   hasMore: state.hasMore,
@@ -525,61 +486,6 @@ class _LoadMoreIndicator extends StatelessWidget {
     );
   }
 }
-
-// ─── Empty view ───────────────────────────────────────────────────────────────
-
-class _EmptyView extends StatelessWidget {
-  const _EmptyView();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: const Color(0x26059669),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.inbox_rounded,
-                color: Color(0xFF059669),
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No WhatsApp Leads Found',
-              style: TextStyle(
-                color: c.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'No leads match your current filters.\nTry adjusting the search or filter options.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: c.textSecondary,
-                fontSize: 13,
-                height: 1.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Error view ───────────────────────────────────────────────────────────────
 
 class _ErrorView extends StatelessWidget {
   final String message;

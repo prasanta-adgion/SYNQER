@@ -74,6 +74,12 @@ class _NavbarLeadsScreenState extends State<NavbarLeadsScreen> {
     return false;
   });
 
+  @override
+  void initState() {
+    super.initState();
+    _leadNavIndex.addListener(_showTabs);
+  }
+
   bool get _currentFilterActive {
     if (_leadNavIndex.value == 0) {
       return _channelTabIndex.value == 0
@@ -130,8 +136,13 @@ class _NavbarLeadsScreenState extends State<NavbarLeadsScreen> {
     }
   }
 
+  void _showTabs() {
+    if (!_showTabBar.value) _showTabBar.value = true;
+  }
+
   @override
   void dispose() {
+    _leadNavIndex.removeListener(_showTabs);
     _leadNavIndex.dispose();
     _channelTabIndex.dispose();
     _webTabIndex.dispose();
@@ -216,13 +227,13 @@ class _NavbarLeadsScreenState extends State<NavbarLeadsScreen> {
               return LeadTabShell(
                 key: const ValueKey('channel'),
                 tabs: const ['WhatsApp Leads', 'RCS Leads'],
-                onTabChanged: (i) => _channelTabIndex.value = i,
+                showTabBar: _showTabBar,
+                onScrollDirectionChanged: onScrollDirectionChanged,
+                onTabChanged: (i) {
+                  _channelTabIndex.value = i;
+                  _showTabs();
+                },
                 children: [
-                  // const _LeadListView(
-                  //   title: 'WhatsApp Leads',
-                  //   searchHint: 'Search WhatsApp leads...',
-                  //   leads: _whatsappLeads,
-                  // ),
                   WhatsappLeadsScreen(filtersNotifier: _whatsappFilters),
                   RcsLeadsScreen(filtersNotifier: _rcsFilters),
                 ],
@@ -232,7 +243,12 @@ class _NavbarLeadsScreenState extends State<NavbarLeadsScreen> {
             return LeadTabShell(
               key: const ValueKey('web'),
               tabs: const ['AI Web Agent Leads', 'Web Form Leads'],
-              onTabChanged: (i) => _webTabIndex.value = i,
+              showTabBar: _showTabBar,
+              onScrollDirectionChanged: onScrollDirectionChanged,
+              onTabChanged: (i) {
+                _webTabIndex.value = i;
+                _showTabs();
+              },
               children: [
                 AiwebLeadsScreen(filtersNotifier: _aiAgentFilters),
                 const _LeadListView(

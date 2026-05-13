@@ -326,7 +326,7 @@ class _EditLeadBottomSheetState extends State<EditLeadBottomSheet> {
                 Expanded(
                   child: AppButton(
                     text: 'Cancel',
-                    onPressed: () {},
+                    onPressed: () => Navigator.pop(context),
                     bgColor: Colors.transparent,
                     borderColor: c.borderStrong,
                     textColor: c.textSecondary,

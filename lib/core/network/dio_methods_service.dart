@@ -29,7 +29,6 @@ class DioMethodsService {
   // ───────────────── TOKEN ─────────────────
 
   void updateToken(String? token) {
-    debugPrint("Updating auth token in DIO: $token");
     _authToken = token;
   }
 

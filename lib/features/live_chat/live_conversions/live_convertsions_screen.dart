@@ -179,10 +179,6 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
   }
 
   void _onTileTap(ConversionsChatData chat) {
-    // ScaffoldMessenger.of(context).showSnackBar(
-    //   SnackBar(content: Text('Open chat with ${chat.customerName ?? "--"}')),
-    // );
-
     Navigator.push(
       context,
       MaterialPageRoute(
