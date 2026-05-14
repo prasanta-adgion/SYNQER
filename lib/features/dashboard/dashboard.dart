@@ -15,7 +15,7 @@ import 'package:synqer_io/features/bulk_sms/bulk_sms_screen.dart';
 import 'package:synqer_io/features/dashboard/widgets/header_section.dart';
 import 'package:synqer_io/features/live_chat/live_conversions/live_convertsions_screen.dart';
 import 'package:synqer_io/features/manage_contacts/contacts_screen.dart';
-import 'package:synqer_io/features/rcs_messages/rcs_screen.dart';
+import 'package:synqer_io/features/rcs_sms/rcs_screen.dart';
 import 'package:synqer_io/features/whatsapp/whatsapp_screen.dart';
 
 class ActivityItem {

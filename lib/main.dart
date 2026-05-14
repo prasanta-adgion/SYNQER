@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/token_storage.dart';
 import 'package:synqer_io/core/theme/theme_controller.dart';
@@ -17,6 +18,11 @@ void main() async {
   if (token != null) {
     AppInjector.dio.updateToken(token);
   }
+
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   runApp(MyApp(themeController: themeController));
 }

@@ -40,4 +40,12 @@ class APIsEndPoints {
   static String updateAiWebLead(String id) => "api/v1/my/widget/leads/$id";
 
   static String deleteAiWebLead(String id) => "api/v1/my/widget/leads/$id";
+
+  static const String getRcsPreviewTemplates =
+      "user/api/v1/rcs/templates-for-sending";
+
+  static String getRcsPreviewTempleteById(String id) =>
+      "user/api/v1/rcs/my-templates/$id";
+
+  static const String sendRcsBulkMessages = "user/api/v1/rcs/send-rcs-bulk";
 }

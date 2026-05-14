@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
-import 'package:synqer_io/features/rcs_messages/create_campaign/widgets/campaign_details.dart';
-import 'package:synqer_io/features/rcs_messages/create_campaign/widgets/upload_numbers.dart';
+import 'package:synqer_io/features/rcs_sms/create_campaign/widgets/campaign_details.dart';
+import 'package:synqer_io/features/rcs_sms/create_campaign/widgets/send_sms_screen.dart';
+import 'package:synqer_io/features/rcs_sms/rcs_preview_campaign/rcs_preview_screen.dart';
+import 'package:synqer_io/features/rcs_sms/create_campaign/widgets/upload_numbers.dart';
 import 'package:timeline_tile/timeline_tile.dart';
 
 class CreateCampaignView extends StatefulWidget {
@@ -21,6 +23,7 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
   final _uploadNumbers = ValueNotifier<UploadNumbersData>(
     const UploadNumbersData(),
   );
+  final _previewCampaign = ValueNotifier<PreviewCampaignData?>(null);
 
   static const _steps = [
     _CampaignStep('Campaign Details', Icons.edit_note_rounded),
@@ -34,6 +37,7 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
     _currentStep.dispose();
     _campaignDetails.dispose();
     _uploadNumbers.dispose();
+    _previewCampaign.dispose();
     super.dispose();
   }
 
@@ -98,10 +102,17 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
                     initialData: _uploadNumbers.value,
                     onChanged: (data) => _uploadNumbers.value = data,
                   )
+                else if (currentStep == 2)
+                  PreviewCampaign(
+                    recipientCount: _uploadNumbers.value.numbers.length,
+                    initialData: _previewCampaign.value,
+                    onChanged: (data) => _previewCampaign.value = data,
+                  )
                 else
-                  _StepContentCard(
-                    step: _steps[currentStep],
-                    index: currentStep,
+                  SendSmsScreen(
+                    campaignDetails: _campaignDetails.value,
+                    uploadNumbers: _uploadNumbers.value,
+                    previewCampaign: _previewCampaign.value,
                   ),
                 const SizedBox(height: 16),
                 _StepNavigation(
@@ -267,74 +278,6 @@ class _CampaignTimeline extends StatelessWidget {
     final words = title.split(' ');
     if (words.length == 1) return '';
     return words.skip(1).join(' ');
-  }
-}
-
-class _StepContentCard extends StatelessWidget {
-  final _CampaignStep step;
-  final int index;
-
-  const _StepContentCard({required this.step, required this.index});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: c.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: c.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: c.accentSoft,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(step.icon, color: c.primary, size: 24),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Step ${index + 1}: ${step.title}',
-                  style: TextStyle(
-                    color: c.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  _descriptionFor(index),
-                  style: TextStyle(
-                    color: c.textSecondary,
-                    fontSize: 12.5,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _descriptionFor(int index) {
-    return switch (index) {
-      0 => 'Add campaign name, template, sender details, and message setup.',
-      1 => 'Upload or select recipient mobile numbers for this campaign.',
-      2 => 'Review recipients, template content, and campaign settings.',
-      _ => 'Confirm everything and send the RCS campaign.',
-    };
   }
 }
 

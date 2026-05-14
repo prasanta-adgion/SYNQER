@@ -6,13 +6,11 @@ class CampaignDetailsData {
   final String campaignName;
   final String channel;
   final String country;
-  final String campaignType;
 
   const CampaignDetailsData({
     this.campaignName = '',
     this.channel = 'RCS',
     this.country = 'India',
-    this.campaignType = 'Promotional',
   });
 
   CampaignDetailsData copyWith({
@@ -25,7 +23,6 @@ class CampaignDetailsData {
       campaignName: campaignName ?? this.campaignName,
       channel: channel ?? this.channel,
       country: country ?? this.country,
-      campaignType: campaignType ?? this.campaignType,
     );
   }
 }
@@ -51,7 +48,6 @@ class _CampaignDetailsState extends State<CampaignDetails> {
 
   late final TextEditingController _channelController;
   late final TextEditingController _countryController;
-  late final TextEditingController _campaignTypeController;
   late final TextEditingController _campaignNameController;
 
   late final ValueNotifier<CampaignDetailsData> _detailsNotifier;
@@ -63,7 +59,6 @@ class _CampaignDetailsState extends State<CampaignDetails> {
     _detailsNotifier = ValueNotifier(data);
     _channelController = TextEditingController(text: data.channel);
     _countryController = TextEditingController(text: data.country);
-    _campaignTypeController = TextEditingController(text: data.campaignType);
     _campaignNameController = TextEditingController(text: data.campaignName)
       ..addListener(_onNameChanged);
   }
@@ -73,7 +68,6 @@ class _CampaignDetailsState extends State<CampaignDetails> {
     _campaignNameController.removeListener(_onNameChanged);
     _channelController.dispose();
     _countryController.dispose();
-    _campaignTypeController.dispose();
     _campaignNameController.dispose();
     _detailsNotifier.dispose();
     super.dispose();
@@ -183,75 +177,78 @@ class _CampaignDetailsState extends State<CampaignDetails> {
           border: Border.all(color: c.border),
         ),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: c.accentSoft,
-                  borderRadius: BorderRadius.circular(12),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: c.accentSoft,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.edit_note_rounded,
+                    color: c.primary,
+                    size: 22,
+                  ),
                 ),
-                child: Icon(
-                  Icons.edit_note_rounded,
-                  color: c.primary,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Campaign Details',
-                      style: TextStyle(
-                        color: c.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Campaign Details',
+                        style: TextStyle(
+                          color: c.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      'Set the campaign basics before uploading recipients.',
-                      style: TextStyle(color: c.textSecondary, fontSize: 12.5),
-                    ),
-                  ],
+                      const SizedBox(height: 3),
+                      Text(
+                        'Set the campaign basics before uploading recipients.',
+                        style: TextStyle(
+                          color: c.textSecondary,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          _FieldLabel(label: 'Campaign Name', required: true),
-          CustomTextFormField(
-            controller: _campaignNameController,
-            hint_text: 'Enter campaign name',
-            fieldIcon: Icons.campaign_outlined,
-            validator: _validateCampaignName,
-          ),
-          const SizedBox(height: 14),
-          _FieldLabel(label: 'Campaign Channel'),
-          CustomTextFormField(
-            controller: _channelController,
-            readOnly: true,
-            fieldIcon: Icons.forum_rounded,
-          ),
-          const SizedBox(height: 14),
-          _FieldLabel(label: 'Select Country'),
-          CustomTextFormField(
-            controller: _countryController,
-            readOnly: true,
-            onTap: _pickCountry,
-            fieldIcon: Icons.public_rounded,
-            suffixIcon: Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: c.textSecondary,
-              size: 20,
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 18),
+            _FieldLabel(label: 'Campaign Name', required: true),
+            CustomTextFormField(
+              controller: _campaignNameController,
+              hint_text: 'Enter campaign name',
+              fieldIcon: Icons.campaign_outlined,
+              validator: _validateCampaignName,
+            ),
+            const SizedBox(height: 14),
+            _FieldLabel(label: 'Campaign Channel'),
+            CustomTextFormField(
+              controller: _channelController,
+              readOnly: true,
+              fieldIcon: Icons.forum_rounded,
+            ),
+            const SizedBox(height: 14),
+            _FieldLabel(label: 'Select Country'),
+            CustomTextFormField(
+              controller: _countryController,
+              readOnly: true,
+              onTap: _pickCountry,
+              fieldIcon: Icons.public_rounded,
+              suffixIcon: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: c.textSecondary,
+                size: 20,
+              ),
+            ),
+          ],
         ),
       ),
     );

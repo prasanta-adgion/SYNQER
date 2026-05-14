@@ -623,9 +623,9 @@ class VideoPlayerBubble extends StatefulWidget {
 class _VideoPlayerBubbleState extends State<VideoPlayerBubble> {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
-  bool _isLoading = false;
-  bool _hasError = false;
-  bool _hasStarted = false;
+  final ValueNotifier<_VideoPlaybackUiState> _playbackState = ValueNotifier(
+    const _VideoPlaybackUiState(),
+  );
 
   String get _mediaUrl => widget.chat.mediaUrl?.trim() ?? '';
 
@@ -640,9 +640,7 @@ class _VideoPlayerBubbleState extends State<VideoPlayerBubble> {
 
     if (oldWidget.chat.mediaUrl?.trim() != _mediaUrl) {
       _disposeControllers();
-      _hasStarted = false;
-      _hasError = false;
-      _isLoading = false;
+      _playbackState.value = const _VideoPlaybackUiState();
     }
   }
 
@@ -651,19 +649,17 @@ class _VideoPlayerBubbleState extends State<VideoPlayerBubble> {
     final uri = Uri.tryParse(mediaUrl);
 
     if (mediaUrl.isEmpty || uri == null || !uri.hasScheme) {
-      setState(() {
-        _hasStarted = true;
-        _isLoading = false;
-        _hasError = true;
-      });
+      _playbackState.value = const _VideoPlaybackUiState(
+        hasStarted: true,
+        hasError: true,
+      );
       return;
     }
 
-    setState(() {
-      _hasStarted = true;
-      _isLoading = true;
-      _hasError = false;
-    });
+    _playbackState.value = const _VideoPlaybackUiState(
+      hasStarted: true,
+      isLoading: true,
+    );
 
     try {
       final videoController = VideoPlayerController.networkUrl(uri);
@@ -685,18 +681,16 @@ class _VideoPlayerBubbleState extends State<VideoPlayerBubble> {
         aspectRatio: videoController.value.aspectRatio,
       );
 
-      setState(() {
-        _videoController = videoController;
-        _chewieController = chewieController;
-        _isLoading = false;
-      });
+      _videoController = videoController;
+      _chewieController = chewieController;
+      _playbackState.value = const _VideoPlaybackUiState(hasStarted: true);
     } catch (_) {
       if (!mounted) return;
 
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-      });
+      _playbackState.value = const _VideoPlaybackUiState(
+        hasStarted: true,
+        hasError: true,
+      );
     }
   }
 
@@ -710,6 +704,7 @@ class _VideoPlayerBubbleState extends State<VideoPlayerBubble> {
   @override
   void dispose() {
     _disposeControllers();
+    _playbackState.dispose();
     super.dispose();
   }
 
@@ -718,47 +713,67 @@ class _VideoPlayerBubbleState extends State<VideoPlayerBubble> {
     final c = context.colors;
     final title = _fallbackTitle(widget.chat.message, 'Video');
 
-    if (_hasError) {
-      return _UnavailableMediaLabel(label: 'Video unavailable');
-    }
+    return ValueListenableBuilder<_VideoPlaybackUiState>(
+      valueListenable: _playbackState,
+      builder: (context, playbackState, _) {
+        if (playbackState.hasError) {
+          return _UnavailableMediaLabel(label: 'Video unavailable');
+        }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: SizedBox(
-            width: 240,
-            height: 300,
-            child: !_hasStarted
-                ? _VideoPlayPlaceholder(title: title, onTap: _initializeVideo)
-                : _isLoading || _chewieController == null
-                ? Container(
-                    color: Colors.black87,
-                    alignment: Alignment.center,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: c.green,
-                    ),
-                  )
-                : Chewie(controller: _chewieController!),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 14,
-            color: c.textPrimary,
-            fontWeight: FontWeight.w600,
-            height: 1.3,
-          ),
-        ),
-      ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 240,
+                height: 300,
+                child: !playbackState.hasStarted
+                    ? _VideoPlayPlaceholder(
+                        title: title,
+                        onTap: _initializeVideo,
+                      )
+                    : playbackState.isLoading || _chewieController == null
+                    ? Container(
+                        color: Colors.black87,
+                        alignment: Alignment.center,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: c.green,
+                        ),
+                      )
+                    : Chewie(controller: _chewieController!),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 14,
+                color: c.textPrimary,
+                fontWeight: FontWeight.w600,
+                height: 1.3,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
+}
+
+class _VideoPlaybackUiState {
+  final bool isLoading;
+  final bool hasError;
+  final bool hasStarted;
+
+  const _VideoPlaybackUiState({
+    this.isLoading = false,
+    this.hasError = false,
+    this.hasStarted = false,
+  });
 }
 
 class _VideoPlayPlaceholder extends StatelessWidget {

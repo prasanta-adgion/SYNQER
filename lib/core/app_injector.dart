@@ -7,6 +7,8 @@ import 'package:synqer_io/features/live_chat/single_conversion/repository/single
 import 'package:synqer_io/features/live_chat/save_contact/repository/get_groups_repo.dart';
 import 'package:synqer_io/features/manage_contacts/repository/manage_contacts_repo.dart';
 import 'package:synqer_io/features/profile/repository/profile_repo.dart';
+import 'package:synqer_io/features/rcs_sms/create_campaign/repository/send_rcsmessage_repo.dart';
+import 'package:synqer_io/features/rcs_sms/rcs_preview_campaign/repository/rcs_preview_repo.dart';
 import 'package:synqer_io/features/transaction_screen/repository/transaction_get_repo.dart';
 import 'package:synqer_io/features/user_login/repo/login_repo.dart';
 
@@ -40,6 +42,14 @@ class AppInjector {
 
   //get rcs leads
   static final RcsLeadsRepo rcsLeadsRepo = RcsLeadsRepo(dio: dio);
+
+  //get rcs preview templates
+  static final RcsPreviewRepo rcsPreviewRepo = RcsPreviewRepo(dio: dio);
+
+  //send rcs campaign
+  static final SendRcsmessageRepo sendRcsmessageRepo = SendRcsmessageRepo(
+    dio: dio,
+  );
 
   //get whatsapp leads
   static final WhatsappLeadsRepo whatsappLeadsRepo = WhatsappLeadsRepo(

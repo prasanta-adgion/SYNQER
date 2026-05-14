@@ -5,8 +5,8 @@ import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/utils/app_configarations.dart';
 import 'package:synqer_io/core/widgets/custom_appbar.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/rcs_lead/rcs_leads_screen.dart';
-import 'package:synqer_io/features/rcs_messages/create_campaign/create_campaign_screen.dart';
-import 'package:synqer_io/features/rcs_messages/manage_templete/templete_display_screen.dart';
+import 'package:synqer_io/features/rcs_sms/create_campaign/create_campaign_screen.dart';
+import 'package:synqer_io/features/rcs_sms/manage_template/template_display_screen.dart';
 
 class RcsScreen extends StatefulWidget {
   const RcsScreen({super.key});

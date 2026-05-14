@@ -32,6 +32,15 @@ class AppConfig {
     return cleaned;
   }
 
+  static String currentTimeString() {
+    final now = TimeOfDay.now();
+    final hour = now.hourOfPeriod == 0 ? 12 : now.hourOfPeriod;
+    final minute = now.minute.toString().padLeft(2, '0');
+    final period = now.period == DayPeriod.am ? 'AM' : 'PM';
+
+    return '$hour:$minute $period';
+  }
+
   static Future<void> launchCaller(String phoneNumber) async {
     final uri = Uri.parse("tel:$phoneNumber");
     if (await url_launcher.canLaunchUrl(uri)) {
