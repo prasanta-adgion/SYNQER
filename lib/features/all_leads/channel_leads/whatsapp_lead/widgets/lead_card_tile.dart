@@ -11,6 +11,7 @@ import 'package:synqer_io/core/widgets/app_popover_dailog.dart';
 import 'package:synqer_io/core/widgets/app_snackbar.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/whatsapp_lead/model/whatsappleads_data_model.dart';
 import 'package:synqer_io/features/all_leads/channel_leads/whatsapp_lead/widgets/edit_lead_data.dart';
+import 'package:synqer_io/features/live_chat/save_contact/save_contact_screen.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/single_conversions_screen.dart';
 import 'package:synqer_io/features/manage_contacts/widgets/delete_dailog.dart';
 
@@ -345,7 +346,6 @@ class LeadCardTile extends StatelessWidget {
     }
 
     try {
-      // await AppConfig.openWebsite('https://wa.me/$phone');
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -394,6 +394,29 @@ class LeadCardTile extends StatelessWidget {
       buttonContext: buttonContext,
       width: 180,
       items: [
+        AppPopoverItem(
+          title: 'Add Contact',
+
+          icon: Icons.person_add_alt_1,
+
+          onTap: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: c.bottomSheet,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              builder: (_) {
+                return SaveContact(
+                  customerNumber: AppConfig.removeCountryCode(
+                    lead.phoneNumber.toString(),
+                  ),
+                );
+              },
+            );
+          },
+        ),
         AppPopoverItem(
           title: 'Edit',
           icon: Icons.edit_outlined,

@@ -435,7 +435,7 @@ class _ProfileViewState extends State<_ProfileView>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      _fmtMoney(totalBalance, currency),
+                      _fmtMoneyFull(totalBalance, currency),
                       style: TextStyle(
                         color: c.textPrimary,
                         fontSize: 32,
@@ -495,7 +495,7 @@ class _ProfileViewState extends State<_ProfileView>
                   service: 'sms',
                   label: 'SMS Balance',
                   sublabel: 'Text messaging',
-                  amount: _fmtMoney(user?.smsBalance, currency),
+                  amount: _fmtMoneyFull(user?.smsBalance, currency),
                   accent: c.primary,
                   c: c,
                 ),
@@ -513,6 +513,11 @@ class _ProfileViewState extends State<_ProfileView>
                   _BalanceRcsRow(
                     label: 'RCS Balance',
                     sublabel: 'Rich communication',
+                    totalValue: _fmtMoneyFull(
+                      (user!.rcsBalance!.text ?? 0) +
+                          (user.rcsBalance!.richMedia ?? 0),
+                      currency,
+                    ),
                     textValue: _fmtMoney(user!.rcsBalance!.text, currency),
                     richValue: _fmtMoney(user.rcsBalance!.richMedia, currency),
                     accent: const Color(0xFFF59E0B),
@@ -1000,6 +1005,12 @@ String _fmtMoney(num? value, String currency) {
   return '$currency${v.toStringAsFixed(v % 1 == 0 ? 0 : 2)}';
 }
 
+String _fmtMoneyFull(num? value, String currency) {
+  final v = value ?? 0;
+  final formatted = v.toStringAsFixed(v % 1 == 0 ? 0 : 2);
+  return '$currency$formatted';
+}
+
 String _fmtPriceShort(num? value, String currency) {
   if (value == null) return '--';
   final s = value.toStringAsFixed(2);
@@ -1151,12 +1162,14 @@ class _BalanceChannelRow extends StatelessWidget {
 
 class _BalanceRcsRow extends StatelessWidget {
   final String label, sublabel;
+  final String totalValue;
   final String textValue, richValue;
   final Color accent;
   final AppColors c;
   const _BalanceRcsRow({
     required this.label,
     required this.sublabel,
+    required this.totalValue,
     required this.textValue,
     required this.richValue,
     required this.accent,
@@ -1213,6 +1226,29 @@ class _BalanceRcsRow extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  totalValue,
+                  style: TextStyle(
+                    color: c.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  'available',
+                  style: TextStyle(
+                    color: c.textMuted,
+                    fontSize: 9,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
