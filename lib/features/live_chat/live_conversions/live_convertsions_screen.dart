@@ -9,6 +9,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/core/utils/app_configarations.dart';
+import 'package:synqer_io/core/widgets/app_snackbar.dart';
 import 'package:synqer_io/features/dashboard/widgets/header_section.dart';
 import 'package:synqer_io/features/live_chat/live_conversions/bloc/live_convertsions_bloc.dart';
 import 'package:synqer_io/features/live_chat/live_conversions/model/live_conversions_model.dart';
@@ -168,14 +170,40 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
     );
   }
 
-  void _onCallTap(ConversionsChatData chat) {
-    final mobile = chat.customerMobile;
+  Future<void> _onCallTap(ConversionsChatData chat) async {
+    final mobile = _phoneForDial(chat.customerMobile);
 
-    if (mobile == null || mobile.isEmpty) return;
+    if (mobile.isEmpty) {
+      AppSnackbar.show(
+        context,
+        message: 'Phone number not available',
+        type: SnackbarType.error,
+      );
+      return;
+    }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Calling $mobile...')));
+    try {
+      final launched = await AppConfig.launchCaller(mobile);
+      if (launched || !mounted) return;
+
+      AppSnackbar.show(
+        context,
+        message: 'Could not open phone dialer',
+        type: SnackbarType.error,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackbar.show(
+        context,
+        message: 'Could not open phone dialer',
+        type: SnackbarType.error,
+      );
+    }
+  }
+
+  String _phoneForDial(String? rawPhone) {
+    if (rawPhone == null) return '';
+    return rawPhone.replaceAll(RegExp(r'[^0-9+]'), '').trim();
   }
 
   void _onTileTap(ConversionsChatData chat) {

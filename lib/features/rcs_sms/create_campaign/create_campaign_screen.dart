@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/core/widgets/app_custom_button.dart';
+import 'package:synqer_io/core/widgets/custom_appbar.dart';
 import 'package:synqer_io/features/rcs_sms/create_campaign/widgets/campaign_details.dart';
 import 'package:synqer_io/features/rcs_sms/create_campaign/widgets/send_sms_screen.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_preview_campaign/rcs_preview_screen.dart';
@@ -7,7 +9,14 @@ import 'package:synqer_io/features/rcs_sms/create_campaign/widgets/upload_number
 import 'package:timeline_tile/timeline_tile.dart';
 
 class CreateCampaignView extends StatefulWidget {
-  const CreateCampaignView({super.key});
+  final VoidCallback? onShowReports;
+  final bool showAppBar;
+
+  const CreateCampaignView({
+    super.key,
+    this.onShowReports,
+    this.showAppBar = false,
+  });
 
   @override
   State<CreateCampaignView> createState() => _CreateCampaignViewState();
@@ -24,6 +33,8 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
     const UploadNumbersData(),
   );
   final _previewCampaign = ValueNotifier<PreviewCampaignData?>(null);
+  final _sendStepReady = ValueNotifier<bool>(false);
+  final _campaignSent = ValueNotifier<bool>(false);
 
   static const _steps = [
     _CampaignStep('Campaign Details', Icons.edit_note_rounded),
@@ -38,6 +49,8 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
     _campaignDetails.dispose();
     _uploadNumbers.dispose();
     _previewCampaign.dispose();
+    _sendStepReady.dispose();
+    _campaignSent.dispose();
     super.dispose();
   }
 
@@ -61,13 +74,36 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
     if (index > 1 && _currentStep.value == 1 && !_canLeaveUploadNumbers()) {
       return;
     }
-    _currentStep.value = index;
+    _setCurrentStep(index);
   }
 
   void _goToNextStep() {
     if (_currentStep.value == 0 && !_canLeaveCampaignDetails()) return;
     if (_currentStep.value == 1 && !_canLeaveUploadNumbers()) return;
-    _currentStep.value = _currentStep.value + 1;
+    _setCurrentStep(_currentStep.value + 1);
+  }
+
+  void _setCurrentStep(int index) {
+    if (index != _steps.length - 1) {
+      _sendStepReady.value = false;
+    }
+    _currentStep.value = index;
+  }
+
+  void _markReadyToSend() {
+    _sendStepReady.value = true;
+  }
+
+  void _markCampaignSent() {
+    _campaignSent.value = true;
+    _sendStepReady.value = true;
+  }
+
+  void _finishCampaign() {
+    widget.onShowReports?.call();
+    _campaignSent.value = false;
+    _sendStepReady.value = false;
+    _setCurrentStep(0);
   }
 
   @override
@@ -76,56 +112,86 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
 
     return Scaffold(
       backgroundColor: c.bg,
+      appBar: widget.showAppBar
+          ? CustomAppBar(
+              title: 'Create Campaign',
+              subtitle: 'Build and send an RCS campaign',
+              backgroundColor: c.surface,
+              titleColor: c.textPrimary,
+              subtitleColor: c.textSecondary,
+              onBack: () => Navigator.pop(context),
+            )
+          : null,
       body: SafeArea(
         top: true,
         child: ValueListenableBuilder<int>(
           valueListenable: _currentStep,
           builder: (context, currentStep, _) {
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              children: [
-                _CampaignTimeline(
-                  steps: _steps,
-                  currentStep: currentStep,
-                  onStepTap: _goToStep,
-                ),
-                const SizedBox(height: 22),
-                if (currentStep == 0)
-                  CampaignDetails(
-                    formKey: _campaignDetailsFormKey,
-                    initialData: _campaignDetails.value,
-                    onChanged: (data) => _campaignDetails.value = data,
-                  )
-                else if (currentStep == 1)
-                  UploadNumbers(
-                    key: _uploadNumbersKey,
-                    initialData: _uploadNumbers.value,
-                    onChanged: (data) => _uploadNumbers.value = data,
-                  )
-                else if (currentStep == 2)
-                  PreviewCampaign(
-                    recipientCount: _uploadNumbers.value.numbers.length,
-                    initialData: _previewCampaign.value,
-                    onChanged: (data) => _previewCampaign.value = data,
-                  )
-                else
-                  SendSmsScreen(
-                    campaignDetails: _campaignDetails.value,
-                    uploadNumbers: _uploadNumbers.value,
-                    previewCampaign: _previewCampaign.value,
-                  ),
-                const SizedBox(height: 16),
-                _StepNavigation(
-                  currentStep: currentStep,
-                  totalSteps: _steps.length,
-                  onPrevious: currentStep == 0
-                      ? null
-                      : () => _currentStep.value = currentStep - 1,
-                  onNext: currentStep == _steps.length - 1
-                      ? null
-                      : _goToNextStep,
-                ),
-              ],
+            return ValueListenableBuilder<bool>(
+              valueListenable: _sendStepReady,
+              builder: (context, sendStepReady, _) {
+                return ValueListenableBuilder<bool>(
+                  valueListenable: _campaignSent,
+                  builder: (context, campaignSent, _) {
+                    return ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                      children: [
+                        _CampaignTimeline(
+                          steps: _steps,
+                          currentStep: currentStep,
+                          sendStepReady: sendStepReady,
+                          onStepTap: campaignSent ? (_) {} : _goToStep,
+                        ),
+                        const SizedBox(height: 22),
+                        if (currentStep == 0)
+                          CampaignDetails(
+                            formKey: _campaignDetailsFormKey,
+                            initialData: _campaignDetails.value,
+                            onChanged: (data) => _campaignDetails.value = data,
+                          )
+                        else if (currentStep == 1)
+                          UploadNumbers(
+                            key: _uploadNumbersKey,
+                            initialData: _uploadNumbers.value,
+                            onChanged: (data) => _uploadNumbers.value = data,
+                          )
+                        else if (currentStep == 2)
+                          PreviewCampaign(
+                            recipientCount: _uploadNumbers.value.numbers.length,
+                            initialData: _previewCampaign.value,
+                            onChanged: (data) => _previewCampaign.value = data,
+                          )
+                        else
+                          SendSmsScreen(
+                            campaignDetails: _campaignDetails.value,
+                            uploadNumbers: _uploadNumbers.value,
+                            previewCampaign: _previewCampaign.value,
+                            isReadyToSend: sendStepReady,
+                            onCampaignSent: _markCampaignSent,
+                          ),
+                        const SizedBox(height: 16),
+                        _StepNavigation(
+                          currentStep: currentStep,
+                          totalSteps: _steps.length,
+                          isSendStepReady: sendStepReady,
+                          campaignSent: campaignSent,
+                          onPrevious: currentStep == 0 || campaignSent
+                              ? null
+                              : () => _setCurrentStep(currentStep - 1),
+                          onNext: currentStep == _steps.length - 1
+                              ? null
+                              : _goToNextStep,
+                          onReady:
+                              currentStep == _steps.length - 1 && !campaignSent
+                              ? _markReadyToSend
+                              : null,
+                          onOk: campaignSent ? _finishCampaign : null,
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
             );
           },
         ),
@@ -144,11 +210,13 @@ class _CampaignStep {
 class _CampaignTimeline extends StatelessWidget {
   final List<_CampaignStep> steps;
   final int currentStep;
+  final bool sendStepReady;
   final ValueChanged<int> onStepTap;
 
   const _CampaignTimeline({
     required this.steps,
     required this.currentStep,
+    required this.sendStepReady,
     required this.onStepTap,
   });
 
@@ -169,7 +237,11 @@ class _CampaignTimeline extends StatelessWidget {
         children: List.generate(steps.length, (index) {
           final step = steps[index];
           final isActive = index == currentStep;
-          final isCompleted = index < currentStep;
+          final isCompleted =
+              index < currentStep ||
+              (sendStepReady &&
+                  index == currentStep &&
+                  index == steps.length - 1);
 
           return Expanded(
             child: SizedBox(
@@ -196,27 +268,23 @@ class _CampaignTimeline extends StatelessWidget {
                       duration: const Duration(milliseconds: 200),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: isActive || isCompleted
-                            ? c.textPrimary
-                            : c.surface,
+                        color: isCompleted ? c.green : c.textPrimary,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: isActive || isCompleted
-                              ? c.textPrimary
-                              : c.borderStrong,
+                          color: isCompleted ? c.green : c.borderStrong,
                           width: 1.2,
                         ),
                       ),
                       child: isCompleted
                           ? Icon(
                               Icons.check_rounded,
-                              color: c.surface,
+                              color: Colors.white,
                               size: 17,
                             )
                           : Text(
                               '${index + 1}',
                               style: TextStyle(
-                                color: isActive ? c.surface : c.textSecondary,
+                                color: c.surface,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -284,19 +352,40 @@ class _CampaignTimeline extends StatelessWidget {
 class _StepNavigation extends StatelessWidget {
   final int currentStep;
   final int totalSteps;
+  final bool isSendStepReady;
+  final bool campaignSent;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
+  final VoidCallback? onReady;
+  final VoidCallback? onOk;
 
   const _StepNavigation({
     required this.currentStep,
     required this.totalSteps,
+    required this.isSendStepReady,
+    required this.campaignSent,
     required this.onPrevious,
     required this.onNext,
+    required this.onReady,
+    required this.onOk,
   });
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+
+    if (campaignSent) {
+      return AppButton(
+        text: 'Ok',
+        onPressed: onOk,
+        bgColor: c.primary,
+        textColor: c.onBrand,
+        btnHeight: 45,
+        borderRadius: 8,
+        fontSize: 14,
+        fontWeight: FontWeight.w800,
+      );
+    }
 
     return Row(
       children: [
@@ -316,10 +405,12 @@ class _StepNavigation extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: ElevatedButton(
-            onPressed: onNext,
+            onPressed: currentStep == totalSteps - 1 ? onReady : onNext,
             style: ElevatedButton.styleFrom(
               elevation: 0,
-              backgroundColor: c.primary,
+              backgroundColor: isSendStepReady && currentStep == totalSteps - 1
+                  ? c.green
+                  : c.primary,
               foregroundColor: c.onBrand,
               disabledBackgroundColor: c.surfaceHigh,
               disabledForegroundColor: c.textSecondary,
@@ -327,7 +418,9 @@ class _StepNavigation extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: Text(currentStep == totalSteps - 1 ? 'Ready' : 'Next'),
+            child: currentStep == totalSteps - 1 && isSendStepReady
+                ? const Icon(Icons.check_rounded, size: 20)
+                : Text(currentStep == totalSteps - 1 ? 'Ready' : 'Next'),
           ),
         ),
       ],

@@ -379,7 +379,7 @@ class LeadCardTile extends StatelessWidget {
       return;
     }
 
-    await AppConfig.launchCaller(phone);
+    await AppConfig.launchCaller(AppConfig.removeCountryCode(phone));
   }
 
   void _showActionsPopover({

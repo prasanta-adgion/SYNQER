@@ -41,13 +41,18 @@ class AppConfig {
     return '$hour:$minute $period';
   }
 
-  static Future<void> launchCaller(String phoneNumber) async {
+  static Future<bool> launchCaller(String phoneNumber) async {
     final uri = Uri.parse("tel:$phoneNumber");
     if (await url_launcher.canLaunchUrl(uri)) {
-      await url_launcher.launchUrl(uri);
-    } else {
-      debugPrint("Could not launch phone call");
+      await url_launcher.launchUrl(
+        uri,
+        mode: url_launcher.LaunchMode.externalApplication,
+      );
+      return true;
     }
+
+    debugPrint("Could not launch phone call");
+    return false;
   }
 
   static Future<void> openWebsite(String url) async {

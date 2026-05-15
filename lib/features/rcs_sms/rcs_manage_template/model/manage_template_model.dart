@@ -1,36 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-class ManageTemplateModel extends Equatable {
-  final bool success;
-  final int total;
-  final int page;
-  final List<TemplateData> data;
-
-  const ManageTemplateModel({
-    required this.success,
-    required this.total,
-    required this.page,
-    required this.data,
-  });
-
-  factory ManageTemplateModel.fromJson(Map<String, dynamic> json) {
-    return ManageTemplateModel(
-      success: json['success'] ?? false,
-      total: json['total'] ?? 0,
-      page: json['page'] ?? 0,
-      data:
-          (json['data'] as List<dynamic>?)
-              ?.map((e) => TemplateData.fromJson(e))
-              .toList() ??
-          [],
-    );
-  }
-
-  @override
-  List<Object?> get props => [success, total, page, data];
-}
-
-class TemplateData extends Equatable {
+class RcsTemplateData extends Equatable {
   final String id;
   final String userId;
   final String name;
@@ -50,7 +20,7 @@ class TemplateData extends Equatable {
   final String orientation;
   final CarouselCard? standAlone;
 
-  const TemplateData({
+  const RcsTemplateData({
     required this.id,
     required this.userId,
     required this.name,
@@ -71,8 +41,8 @@ class TemplateData extends Equatable {
     this.standAlone,
   });
 
-  factory TemplateData.fromJson(Map<String, dynamic> json) {
-    return TemplateData(
+  factory RcsTemplateData.fromJson(Map<String, dynamic> json) {
+    return RcsTemplateData(
       id: json['_id'] ?? '',
       userId: json['userId'] ?? '',
       name: json['name'] ?? '',

@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:synqer_io/app_export.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/core/utils/app_configarations.dart';
 import 'package:synqer_io/core/widgets/app_popover_dailog.dart';
+import 'package:synqer_io/core/widgets/app_snackbar.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/bloc/single_conversions_bloc.dart';
 import 'package:synqer_io/features/live_chat/save_contact/save_contact_screen.dart';
 
@@ -29,7 +31,7 @@ class ChatAppbar extends StatelessWidget {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
           child: Row(
             children: [
               /// BACK BUTTON
@@ -39,8 +41,6 @@ class ChatAppbar extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
-
-              const SizedBox(width: 8),
 
               /// AVATAR
               Container(
@@ -88,35 +88,10 @@ class ChatAppbar extends StatelessWidget {
                 ),
               ),
 
-              /// REFRESH BUTTON
-              BlocBuilder<SingleConversionsBloc, SingleConversionsState>(
-                builder: (context, state) {
-                  final isRefreshing =
-                      state is SingleConversionsLoaded && state.isRefreshing;
-
-                  return IconButton(
-                    onPressed: isRefreshing
-                        ? null
-                        : () {
-                            context.read<SingleConversionsBloc>().add(
-                              SilentRefreshSingleConversionsEvent(
-                                customerMobile: customerNumber,
-                                limit: _messagesPageLimit,
-                              ),
-                            );
-                          },
-                    icon: isRefreshing
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: c.onBrand,
-                            ),
-                          )
-                        : Icon(Icons.refresh, color: c.onBrand),
-                  );
-                },
+              /// CALL BUTTON
+              IconButton(
+                onPressed: () => _callCustomer(context, customerNumber),
+                icon: Icon(Icons.call_rounded, color: c.onBrand),
               ),
 
               /// MORE OPTIONS
@@ -127,6 +102,43 @@ class ChatAppbar extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _callCustomer(BuildContext context, String number) async {
+  final phone = _phoneForDial(number);
+
+  if (phone.isEmpty) {
+    AppSnackbar.show(
+      context,
+      message: 'Phone number not available',
+      type: SnackbarType.error,
+    );
+    return;
+  }
+
+  try {
+    final launched = await AppConfig.launchCaller(
+      AppConfig.removeCountryCode(phone),
+    );
+    if (launched || !context.mounted) return;
+
+    AppSnackbar.show(
+      context,
+      message: 'Could not open phone dialer',
+      type: SnackbarType.error,
+    );
+  } catch (_) {
+    if (!context.mounted) return;
+    AppSnackbar.show(
+      context,
+      message: 'Could not open phone dialer',
+      type: SnackbarType.error,
+    );
+  }
+}
+
+String _phoneForDial(String rawPhone) {
+  return rawPhone.replaceAll(RegExp(r'[^0-9+]'), '').trim();
 }
 
 Widget _buildMoreOptions(BuildContext context, String number, AppColors c) {
@@ -167,9 +179,7 @@ Widget _buildMoreOptions(BuildContext context, String number, AppColors c) {
 
               icon: Icons.call,
 
-              onTap: () {
-                debugPrint("Call: $number");
-              },
+              onTap: () => _callCustomer(context, number),
             ),
 
             AppPopoverItem(
