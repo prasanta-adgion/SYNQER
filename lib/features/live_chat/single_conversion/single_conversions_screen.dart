@@ -77,7 +77,7 @@ class _SingleChatState extends State<SingleChat> {
 
   void _onScroll() {
     if (_scrollController.position.atEdge) {
-      // top reached in reverse list
+      // Top reached in the reversed chat list.
       if (_scrollController.position.pixels != 0) {
         final state = context.read<SingleConversionsBloc>().state;
 
@@ -94,8 +94,6 @@ class _SingleChatState extends State<SingleChat> {
     final state = context.read<SingleConversionsBloc>().state;
 
     if (state is! SingleConversionsLoaded) return;
-
-    if (state.currentPage <= 1) return;
 
     context.read<SingleConversionsBloc>().add(
       LoadMoreSingleConversionsEvent(
@@ -325,8 +323,7 @@ class _SingleChatState extends State<SingleChat> {
                             );
                           }
 
-                          final chatIndex = chats.length - 1 - index;
-                          final chat = chats[chatIndex];
+                          final chat = chats[index];
 
                           final isUser =
                               chat.direction?.toLowerCase().trim() ==
@@ -336,8 +333,8 @@ class _SingleChatState extends State<SingleChat> {
 
                           String? previousDate;
 
-                          if (chatIndex > 0) {
-                            previousDate = chats[chatIndex - 1].createDate;
+                          if (index < chats.length - 1) {
+                            previousDate = chats[index + 1].createDate;
                           }
 
                           final showDateSeparator =
@@ -493,7 +490,8 @@ class ChatBubble extends StatelessWidget {
 
                         Builder(
                           builder: (_) {
-                            if (chat.isFailed) {
+                            if (chat.isFailed ||
+                                chat.status == MessageStatus.failed) {
                               return Icon(
                                 Icons.error_outline,
                                 size: 16,

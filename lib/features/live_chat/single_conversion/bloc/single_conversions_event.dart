@@ -6,7 +6,7 @@ sealed class SingleConversionsEvent extends Equatable {
   const SingleConversionsEvent();
 
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
 class FetchSingleConversionsEvent extends SingleConversionsEvent {
@@ -19,7 +19,7 @@ class FetchSingleConversionsEvent extends SingleConversionsEvent {
   });
 
   @override
-  List<Object> get props => [customerMobile, limit];
+  List<Object?> get props => [customerMobile, limit];
 }
 
 class LoadMoreSingleConversionsEvent extends SingleConversionsEvent {
@@ -32,7 +32,7 @@ class LoadMoreSingleConversionsEvent extends SingleConversionsEvent {
   });
 
   @override
-  List<Object> get props => [customerMobile, limit];
+  List<Object?> get props => [customerMobile, limit];
 }
 
 class SilentRefreshSingleConversionsEvent extends SingleConversionsEvent {
@@ -45,16 +45,18 @@ class SilentRefreshSingleConversionsEvent extends SingleConversionsEvent {
   });
 
   @override
-  List<Object> get props => [customerMobile, limit];
+  List<Object?> get props => [customerMobile, limit];
 }
+
+//send message event
 
 class SendSingleMessageEvent extends SingleConversionsEvent {
   final String customerMobile;
   final String message;
   final String messageType;
-  String? attachment;
+  final String? attachment;
 
-  SendSingleMessageEvent({
+  const SendSingleMessageEvent({
     required this.customerMobile,
     required this.message,
     this.messageType = 'text',
@@ -62,12 +64,7 @@ class SendSingleMessageEvent extends SingleConversionsEvent {
   });
 
   @override
-  List<Object> get props => [
-    customerMobile,
-    message,
-    messageType,
-    attachment = '',
-  ];
+  List<Object?> get props => [customerMobile, message, messageType, attachment];
 }
 
 class MarkMessagesAsReadEvent extends SingleConversionsEvent {
@@ -76,5 +73,5 @@ class MarkMessagesAsReadEvent extends SingleConversionsEvent {
   const MarkMessagesAsReadEvent({required this.customerMobile});
 
   @override
-  List<Object> get props => [customerMobile];
+  List<Object?> get props => [customerMobile];
 }

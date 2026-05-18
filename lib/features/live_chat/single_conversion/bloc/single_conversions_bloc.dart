@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:intl/intl.dart';
-import 'package:synqer_io/core/model/paginated_response.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/model/single_conversion_model.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/repository/single_conversion_repo.dart';
 
@@ -29,28 +28,18 @@ class SingleConversionsBloc
     try {
       emit(SingleConversionsLoading());
 
-      final latestMessages = await _fetchLatestMessages(
+      final response = await singleConversionRepo.fetchSingleConversion(
         customerMobile: event.customerMobile,
+        page: 1,
         limit: event.limit,
-        onFirstPage: (firstResponse) {
-          emit(
-            SingleConversionsLoaded(
-              conversions: firstResponse.data,
-              hasMore: firstResponse.totalPages > 1,
-              isRefreshing: firstResponse.totalPages > 1,
-              currentPage: firstResponse.page,
-              totalPages: firstResponse.totalPages,
-            ),
-          );
-        },
       );
 
       emit(
         SingleConversionsLoaded(
-          conversions: latestMessages.data,
-          hasMore: latestMessages.page > 1,
-          currentPage: latestMessages.page,
-          totalPages: latestMessages.totalPages,
+          conversions: response.data,
+          hasMore: response.hasMore,
+          currentPage: response.page,
+          totalPages: response.totalPages,
         ),
       );
     } catch (e) {
@@ -69,20 +58,21 @@ class SingleConversionsBloc
     try {
       emit(currentState.copyWith(isRefreshing: true));
 
-      final latestMessages = await _fetchLatestMessages(
+      final response = await singleConversionRepo.fetchSingleConversion(
         customerMobile: event.customerMobile,
+        page: 1,
         limit: event.limit,
       );
 
       emit(
         currentState.copyWith(
           conversions: _mergeServerMessagesWithPendingLocalMessages(
-            latestMessages.data,
+            response.data,
             currentState.conversions,
           ),
-          currentPage: latestMessages.page,
-          totalPages: latestMessages.totalPages,
-          hasMore: latestMessages.page > 1,
+          currentPage: response.page,
+          totalPages: response.totalPages,
+          hasMore: response.hasMore,
           isRefreshing: false,
           clearSendFailure: true,
         ),
@@ -107,7 +97,7 @@ class SingleConversionsBloc
     try {
       emit(currentState.copyWith(isLoadingMore: true));
 
-      final nextPage = currentState.currentPage - 1;
+      final nextPage = currentState.currentPage + 1;
 
       final response = await singleConversionRepo.fetchSingleConversion(
         customerMobile: event.customerMobile,
@@ -115,13 +105,15 @@ class SingleConversionsBloc
         limit: event.limit,
       );
 
-      final updatedMessages = [...response.data, ...currentState.conversions];
-
       emit(
         currentState.copyWith(
-          conversions: updatedMessages,
-          currentPage: nextPage,
-          hasMore: nextPage > 1,
+          conversions: [
+            ...currentState.conversions,
+            ...response.data,
+          ],
+          currentPage: response.page,
+          totalPages: response.totalPages,
+          hasMore: response.hasMore,
           isLoadingMore: false,
         ),
       );
@@ -153,7 +145,7 @@ class SingleConversionsBloc
 
     emit(
       currentState.copyWith(
-        conversions: [...currentState.conversions, localMessage],
+        conversions: [localMessage, ...currentState.conversions],
         isSendingMessage: true,
         clearSendFailure: true,
       ),
@@ -221,21 +213,22 @@ class SingleConversionsBloc
     if (currentState is! SingleConversionsLoaded) return;
 
     try {
-      final latestMessages = await _fetchLatestMessages(
+      final response = await singleConversionRepo.fetchSingleConversion(
         customerMobile: customerMobile,
+        page: 1,
         limit: limit,
       );
 
       emit(
         currentState.copyWith(
           conversions: _mergeServerMessagesWithPendingLocalMessages(
-            latestMessages.data,
+            response.data,
             currentState.conversions,
             excludeTempIds: {sentTempId},
           ),
-          hasMore: latestMessages.page > 1,
-          currentPage: latestMessages.page,
-          totalPages: latestMessages.totalPages,
+          hasMore: response.hasMore,
+          currentPage: response.page,
+          totalPages: response.totalPages,
           isSendingMessage: false,
           clearSendFailure: true,
         ),
@@ -255,33 +248,6 @@ class SingleConversionsBloc
         ),
       );
     }
-  }
-
-  Future<PaginatedResponse<SingleConversionModel>> _fetchLatestMessages({
-    required String customerMobile,
-    required int limit,
-    void Function(PaginatedResponse<SingleConversionModel> firstResponse)?
-    onFirstPage,
-  }) async {
-    final firstResponse = await singleConversionRepo.fetchSingleConversion(
-      customerMobile: customerMobile,
-      page: 1,
-      limit: limit,
-    );
-
-    onFirstPage?.call(firstResponse);
-
-    final lastPage = firstResponse.totalPages;
-
-    if (lastPage <= 1) {
-      return firstResponse;
-    }
-
-    return singleConversionRepo.fetchSingleConversion(
-      customerMobile: customerMobile,
-      page: lastPage,
-      limit: limit,
-    );
   }
 
   void _removeLocalMessageAndEmitFailure(
@@ -341,6 +307,6 @@ class SingleConversionsBloc
           !excludeTempIds.contains(tempId);
     });
 
-    return [...serverMessages, ...pendingLocalMessages];
+    return [...pendingLocalMessages, ...serverMessages];
   }
 }

@@ -13,6 +13,7 @@ import 'package:synqer_io/core/utils/app_configarations.dart';
 import 'package:synqer_io/core/widgets/app_snackbar.dart';
 import 'package:synqer_io/features/dashboard/widgets/header_section.dart';
 import 'package:synqer_io/features/live_chat/live_conversions/bloc/live_convertsions_bloc.dart';
+import 'package:synqer_io/features/live_chat/live_conversions/cubit/live_conversation_read_cubit.dart';
 import 'package:synqer_io/features/live_chat/live_conversions/model/live_conversions_model.dart';
 import 'package:synqer_io/features/live_chat/live_conversions/widgets/conversions_card_tile.dart';
 import 'package:synqer_io/features/live_chat/single_conversion/single_conversions_screen.dart';
@@ -22,16 +23,21 @@ class LiveConversionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) =>
-          LiveConvertsionsBloc(conversionsRepo: AppInjector.conversionsRepo)
-            ..add(
-              const FetchLiveConvertionsEvent(
-                limit: '20',
-                page: '1',
-                isUnread: 'false',
-              ),
-            ),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) =>
+              LiveConvertsionsBloc(conversionsRepo: AppInjector.conversionsRepo)
+                ..add(
+                  const FetchLiveConvertionsEvent(
+                    limit: '20',
+                    page: '1',
+                    isUnread: 'false',
+                  ),
+                ),
+        ),
+        BlocProvider(create: (_) => LiveConversationReadCubit()),
+      ],
       child: const _LiveConversionsView(),
     );
   }
@@ -207,6 +213,8 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
   }
 
   void _onTileTap(ConversionsChatData chat) {
+    context.read<LiveConversationReadCubit>().markLastMessageRead(chat);
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -352,45 +360,56 @@ class _LiveConversionsViewState extends State<_LiveConversionsView> {
                         );
                       }
 
-                      return NotificationListener<UserScrollNotification>(
-                        onNotification: (notification) {
-                          onScrollDirectionChanged(notification.direction);
+                      return BlocBuilder<
+                        LiveConversationReadCubit,
+                        LiveConversationReadState
+                      >(
+                        builder: (context, readState) {
+                          return NotificationListener<UserScrollNotification>(
+                            onNotification: (notification) {
+                              onScrollDirectionChanged(notification.direction);
 
-                          return false;
-                        },
-                        child: RefreshIndicator(
-                          onRefresh: _onRefresh,
-                          color: c.primary,
-                          backgroundColor: c.surface,
-                          child: ListView.builder(
-                            controller: _scrollController,
-                            physics: const AlwaysScrollableScrollPhysics(
-                              parent: BouncingScrollPhysics(),
-                            ),
-                            padding: const EdgeInsets.only(bottom: 100),
-                            itemCount: state.isLoadingMore
-                                ? conversions.length + 1
-                                : conversions.length,
-                            itemBuilder: (_, i) {
-                              if (i >= conversions.length) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                );
-                              }
-
-                              final chat = conversions[i];
-
-                              return ConversionsCardTile(
-                                chat: chat,
-                                onTap: () => _onTileTap(chat),
-                                onCallTap: () => _onCallTap(chat),
-                              );
+                              return false;
                             },
-                          ),
-                        ),
+                            child: RefreshIndicator(
+                              onRefresh: _onRefresh,
+                              color: c.primary,
+                              backgroundColor: c.surface,
+                              child: ListView.builder(
+                                controller: _scrollController,
+                                physics: const AlwaysScrollableScrollPhysics(
+                                  parent: BouncingScrollPhysics(),
+                                ),
+                                padding: const EdgeInsets.only(bottom: 100),
+                                itemCount: state.isLoadingMore
+                                    ? conversions.length + 1
+                                    : conversions.length,
+                                itemBuilder: (_, i) {
+                                  if (i >= conversions.length) {
+                                    return const Padding(
+                                      padding: EdgeInsets.all(16),
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  }
+
+                                  final chat = conversions[i];
+                                  final shouldHighlight =
+                                      (chat.unreadCount ?? 0) > 0 &&
+                                      !readState.isLastMessageRead(chat);
+
+                                  return ConversionsCardTile(
+                                    chat: chat,
+                                    shouldHighlight: shouldHighlight,
+                                    onTap: () => _onTileTap(chat),
+                                    onCallTap: () => _onCallTap(chat),
+                                  );
+                                },
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),

@@ -1,5 +1,6 @@
 class APIsEndPoints {
   static const String baseUrl = 'https://backend-v2.synqer.io/';
+  // static const String baseUrl = 'http://192.168.1.29:5000/';
 
   static const String login = 'user/api/v1/login';
   static const String liveConvertions =

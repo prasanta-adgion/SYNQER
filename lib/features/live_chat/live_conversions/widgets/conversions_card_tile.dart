@@ -8,12 +8,14 @@ import 'package:synqer_io/features/live_chat/live_conversions/model/live_convers
 
 class ConversionsCardTile extends StatelessWidget {
   final ConversionsChatData chat;
+  final bool shouldHighlight;
   final VoidCallback? onTap;
   final VoidCallback? onCallTap;
 
   const ConversionsCardTile({
     super.key,
     required this.chat,
+    this.shouldHighlight = false,
     this.onTap,
     this.onCallTap,
   });
@@ -26,7 +28,6 @@ class ConversionsCardTile extends StatelessWidget {
         ? chat.customerName!
         : (chat.customerMobile ?? 'Unknown');
 
-    final hasUnread = (chat.unreadCount ?? 0) > 0;
     final isOutgoing =
         chat.lastDirection?.toLowerCase() == 'outbound' ||
         chat.lastDirection?.toLowerCase() == 'out';
@@ -70,7 +71,7 @@ class ConversionsCardTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // ── Avatar ──────────────────────────────────────────────
-                    _Avatar(name: name, isUnread: hasUnread, colors: c),
+                    _Avatar(name: name, isUnread: shouldHighlight, colors: c),
                     const SizedBox(width: 12),
 
                     // ── Middle: name + last message ─────────────────────────
@@ -86,7 +87,7 @@ class ConversionsCardTile extends StatelessWidget {
                             style: TextStyle(
                               color: c.textPrimary,
                               fontSize: 15,
-                              fontWeight: hasUnread
+                              fontWeight: shouldHighlight
                                   ? FontWeight.w700
                                   : FontWeight.w600,
                               letterSpacing: -0.2,
@@ -112,12 +113,12 @@ class ConversionsCardTile extends StatelessWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color: hasUnread
+                                    color: shouldHighlight
                                         ? c.textPrimary
                                         : c.textSecondary,
                                     fontSize: 13,
                                     height: 1.3,
-                                    fontWeight: hasUnread
+                                    fontWeight: shouldHighlight
                                         ? FontWeight.w600
                                         : FontWeight.w400,
                                   ),
@@ -146,7 +147,7 @@ class ConversionsCardTile extends StatelessWidget {
                         ),
 
                         const SizedBox(height: 2),
-                        if (hasUnread)
+                        if (shouldHighlight)
                           _UnreadBadge(
                             count: chat.unreadCount!,
                             // count: 5,
@@ -157,10 +158,8 @@ class ConversionsCardTile extends StatelessWidget {
                             chat.time,
                             style: TextStyle(
                               fontSize: 11.5,
-                              color: hasUnread ? c.primary : c.textSecondary,
-                              fontWeight: hasUnread
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
+                              color: c.textSecondary,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                       ],

@@ -21,6 +21,14 @@ class ConversionsChatData extends Equatable {
     this.customerMobile,
   });
 
+  String get lastMessageSignature => [
+    customerMobile?.trim() ?? '',
+    lastMessage?.trim() ?? '',
+    lastDirection?.trim().toLowerCase() ?? '',
+    date.trim(),
+    time.trim(),
+  ].join('\u001F');
+
   factory ConversionsChatData.fromJson(Map<String, dynamic> json) {
     final parsed = DateTimeUtils.parseChatDateTime(json['lastMessageAt'] ?? '');
 

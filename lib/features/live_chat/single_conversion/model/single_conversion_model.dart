@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:synqer_io/core/utils/date_time_utils.dart';
 
-enum MessageStatus { sent, delivered, read }
+enum MessageStatus { sent, delivered, read, failed }
 
 enum MessageType { text, image, video, document }
 
@@ -16,6 +16,9 @@ MessageStatus getMessageStatus(String? status) {
 
     case 'read':
       return MessageStatus.read;
+
+    case 'failed':
+      return MessageStatus.failed;
 
     default:
       return MessageStatus.sent;
