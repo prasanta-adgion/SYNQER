@@ -107,7 +107,7 @@ class _MainScreenState extends State<MainScreen>
             activeIcon: Icons.close_rounded,
             backgroundColor: c.primary,
             foregroundColor: c.onBrand,
-            elevation: 6,
+            elevation: 0,
             spacing: 14,
             spaceBetweenChildren: 10,
             animationCurve: Curves.easeOutCubic,

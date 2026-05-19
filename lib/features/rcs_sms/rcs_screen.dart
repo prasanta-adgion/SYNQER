@@ -83,11 +83,31 @@ class _RcsScreenState extends State<RcsScreen> {
   final _selectedDestination = ValueNotifier<_RcsDrawerDestination>(
     _RcsDrawerDestination.reportSummary,
   );
+  final _isDrawerOpen = ValueNotifier<bool>(false);
+  AnimationController? _drawerAnimation;
 
   @override
   void dispose() {
+    _drawerAnimation?.removeListener(_syncDrawerState);
+    _isDrawerOpen.dispose();
     _selectedDestination.dispose();
     super.dispose();
+  }
+
+  void _attachDrawerListener() {
+    final drawerAnimation = _drawerKey.currentState?.animationController;
+    if (drawerAnimation == null || drawerAnimation == _drawerAnimation) return;
+
+    _drawerAnimation?.removeListener(_syncDrawerState);
+    _drawerAnimation = drawerAnimation..addListener(_syncDrawerState);
+    _syncDrawerState();
+  }
+
+  void _syncDrawerState() {
+    final isDrawerOpen = _drawerKey.currentState?.isDrawerOpen ?? false;
+    if (_isDrawerOpen.value == isDrawerOpen) return;
+
+    _isDrawerOpen.value = isDrawerOpen;
   }
 
   void _selectDestination(_RcsDrawerDestination destination) {
@@ -116,15 +136,38 @@ class _RcsScreenState extends State<RcsScreen> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _attachDrawerListener(),
+    );
 
     return ValueListenableBuilder<_RcsDrawerDestination>(
       valueListenable: _selectedDestination,
       builder: (context, destination, _) {
         return Scaffold(
           backgroundColor: c.bg,
-          appBar: _RcsScaffoldAppBar(
-            destination: destination,
-            onMenuTap: () => _drawerKey.currentState?.toggle(),
+          appBar: CustomAppBar(
+            title: destination.title,
+            subtitle: destination.subtitle,
+            backgroundColor: c.surface,
+            titleColor: c.textPrimary,
+            subtitleColor: c.textSecondary,
+            showBackButton: true,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ThemeToggleButton(),
+                const SizedBox(width: 10),
+                ValueListenableBuilder<bool>(
+                  valueListenable: _isDrawerOpen,
+                  builder: (context, isDrawerOpen, _) {
+                    return _RcsMenuButton(
+                      isOpen: isDrawerOpen,
+                      onTap: () => _drawerKey.currentState?.toggle(),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
           body: SliderDrawer(
             key: _drawerKey,
@@ -148,46 +191,11 @@ class _RcsScreenState extends State<RcsScreen> {
 
 // ─── App Bar ─────────────────────────────────────────────────────────────────
 
-class _RcsScaffoldAppBar extends StatelessWidget
-    implements PreferredSizeWidget {
-  final _RcsDrawerDestination destination;
-  final VoidCallback onMenuTap;
-
-  const _RcsScaffoldAppBar({
-    required this.destination,
-    required this.onMenuTap,
-  });
-
-  @override
-  Size get preferredSize => const Size.fromHeight(73);
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-
-    return AppBar(
-      automaticallyImplyLeading: false,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      backgroundColor: c.surface,
-      toolbarHeight: 72,
-      titleSpacing: 0,
-      leadingWidth: 62,
-      leading: Center(child: _RcsMenuButton(onTap: onMenuTap)),
-      title: _RcsAppBarTitle(destination: destination),
-      actions: [ThemeToggleButton(), const SizedBox(width: 10)],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(height: 1, color: c.border),
-      ),
-    );
-  }
-}
-
 class _RcsMenuButton extends StatelessWidget {
+  final bool isOpen;
   final VoidCallback onTap;
 
-  const _RcsMenuButton({required this.onTap});
+  const _RcsMenuButton({required this.isOpen, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -204,55 +212,12 @@ class _RcsMenuButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: c.border),
         ),
-        child: Icon(Icons.menu_rounded, color: c.textSecondary, size: 20),
-      ),
-    );
-  }
-}
-
-class _RcsAppBarTitle extends StatelessWidget {
-  final _RcsDrawerDestination destination;
-
-  const _RcsAppBarTitle({required this.destination});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-
-    return Row(
-      children: [
-        const SizedBox(width: 4),
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                destination.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: c.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                destination.subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: c.textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+        child: Icon(
+          isOpen ? Icons.close_rounded : Icons.menu_rounded,
+          color: c.textSecondary,
+          size: 20,
         ),
-      ],
+      ),
     );
   }
 }
@@ -659,31 +624,7 @@ class _DrawerNavItem extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (isLocked) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 2.5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: c.warningSoft,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: c.warning.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Text(
-                      'SOON',
-                      style: TextStyle(
-                        color: c.warning,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ),
-                ] else if (isActive) ...[
+                if (isActive) ...[
                   const SizedBox(width: 6),
                   Container(
                     width: 6,

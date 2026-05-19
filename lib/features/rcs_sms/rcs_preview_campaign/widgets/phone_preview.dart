@@ -16,6 +16,7 @@ class PhonePreview extends StatefulWidget {
   final String templateType;
   final IconData icon;
   final Map<String, String> variableValues;
+  final TemplateData? initialTemplate;
   final ValueChanged<TemplateData>? onTemplateLoaded;
 
   const PhonePreview({
@@ -25,6 +26,7 @@ class PhonePreview extends StatefulWidget {
     required this.templateType,
     required this.icon,
     this.variableValues = const {},
+    this.initialTemplate,
     this.onTemplateLoaded,
   });
 
@@ -49,7 +51,8 @@ class _PhonePreviewState extends State<PhonePreview> {
   @override
   void didUpdateWidget(covariant PhonePreview oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.templateId != widget.templateId) {
+    if (oldWidget.templateId != widget.templateId ||
+        oldWidget.initialTemplate != widget.initialTemplate) {
       _disposeVideo();
       _carouselIndex.value = 0;
       setState(() {
@@ -66,6 +69,13 @@ class _PhonePreviewState extends State<PhonePreview> {
   }
 
   Future<SingleTempleteDataModel> _fetchTemplate() {
+    final initialTemplate = widget.initialTemplate;
+    if (initialTemplate != null) {
+      return Future.value(
+        SingleTempleteDataModel(success: true, data: initialTemplate),
+      );
+    }
+
     return AppInjector.rcsPreviewRepo.fetchTempleteById(widget.templateId);
   }
 
@@ -169,7 +179,7 @@ class _PhonePreviewState extends State<PhonePreview> {
                           color: c.error,
                         )
                       : _TemplateBody(
-                          key: ValueKey(template.id ?? widget.templateId),
+                          key: ValueKey(_templatePreviewKey(template)),
                           template: template,
                           fallbackName: widget.templateName,
                           fallbackType: widget.templateType,
@@ -909,4 +919,46 @@ List<String> _variablePlaceholders(String variable) {
     '{$plain}',
     '{{$plain}}',
   }.toList();
+}
+
+String _templatePreviewKey(TemplateData template) {
+  final suggestions = template.suggestions ?? const <SuggestionModel>[];
+  final carouselCards = template.carouselList ?? const <CarouselCard>[];
+
+  return Object.hashAll([
+    template.id,
+    template.name,
+    template.type,
+    template.textMessageContent,
+    template.standAlone?.cardTitle,
+    template.standAlone?.cardDescription,
+    template.standAlone?.fileName,
+    template.mediaUrls?.join('|'),
+    template.templateDetails?.variables?.join('|'),
+    ...suggestions.expand(
+      (suggestion) => [
+        suggestion.suggestionType,
+        suggestion.displayText,
+        suggestion.postback,
+        suggestion.url,
+        suggestion.phoneNumber,
+      ],
+    ),
+    ...carouselCards.expand(
+      (card) => [
+        card.cardTitle,
+        card.cardDescription,
+        card.fileName,
+        ...(card.suggestions ?? const <SuggestionModel>[]).expand(
+          (suggestion) => [
+            suggestion.suggestionType,
+            suggestion.displayText,
+            suggestion.postback,
+            suggestion.url,
+            suggestion.phoneNumber,
+          ],
+        ),
+      ],
+    ),
+  ]).toString();
 }

@@ -12,7 +12,7 @@ final class ManageTempleteInitial extends ManageTempleteState {}
 final class ManageTempleteLoading extends ManageTempleteState {}
 
 final class ManageTempleteLoaded extends ManageTempleteState {
-  final List<RcsTemplateData> templates;
+  final List<RcsTemplateDataModel> templates;
   final bool hasMore;
   final int currentPage;
   final int limit;
@@ -37,7 +37,7 @@ final class ManageTempleteLoaded extends ManageTempleteState {
   });
 
   ManageTempleteLoaded copyWith({
-    List<RcsTemplateData>? templates,
+    List<RcsTemplateDataModel>? templates,
     bool? hasMore,
     int? currentPage,
     int? limit,

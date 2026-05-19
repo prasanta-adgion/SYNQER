@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-class RcsTemplateData extends Equatable {
+class RcsTemplateDataModel extends Equatable {
   final String id;
   final String userId;
   final String name;
@@ -20,7 +20,7 @@ class RcsTemplateData extends Equatable {
   final String orientation;
   final CarouselCard? standAlone;
 
-  const RcsTemplateData({
+  const RcsTemplateDataModel({
     required this.id,
     required this.userId,
     required this.name,
@@ -41,8 +41,8 @@ class RcsTemplateData extends Equatable {
     this.standAlone,
   });
 
-  factory RcsTemplateData.fromJson(Map<String, dynamic> json) {
-    return RcsTemplateData(
+  factory RcsTemplateDataModel.fromJson(Map<String, dynamic> json) {
+    return RcsTemplateDataModel(
       id: json['_id'] ?? '',
       userId: json['userId'] ?? '',
       name: json['name'] ?? '',

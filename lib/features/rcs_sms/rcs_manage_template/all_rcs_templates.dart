@@ -1,13 +1,23 @@
+// ignore_for_file: deprecated_member_use
+
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/enums/rcstemplate_filter_enum.dart';
+import 'package:synqer_io/core/theme/app_colors.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/core/widgets/app_snackbar.dart';
 import 'package:synqer_io/core/widgets/custom_appbar.dart';
+import 'package:synqer_io/features/manage_contacts/widgets/delete_dailog.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_manage_template/bloc/manage_templete_bloc.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_manage_template/model/manage_template_model.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_manage_template/widgets/rcs_template_card.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_manage_template/widgets/rcs_template_empty.dart';
+import 'package:synqer_io/features/rcs_sms/rcs_manage_template/widgets/template_view_details.dart';
+import 'package:synqer_io/features/rcs_sms/template_create/text_rcs/text_rcs_create.dart';
 import 'package:synqer_io/features/search_bar/search_bar_screen.dart';
 
 class AllRcsTemplateScreen extends StatefulWidget {
@@ -23,9 +33,11 @@ class _AllRcsTemplateScreenState extends State<AllRcsTemplateScreen> {
   final _filterNotifier = ValueNotifier<RCSTemplateFilterEnum>(
     RCSTemplateFilterEnum.all,
   );
+  final _fabNotifier = ValueNotifier<bool>(false);
 
   @override
   void dispose() {
+    _fabNotifier.dispose();
     _filterNotifier.dispose();
     super.dispose();
   }
@@ -39,9 +51,19 @@ class _AllRcsTemplateScreenState extends State<AllRcsTemplateScreen> {
     );
 
     if (selected == null || selected == _filterNotifier.value) return;
-    setState(() {
-      _filterNotifier.value = selected;
-    });
+
+    _filterNotifier.value = selected;
+  }
+
+  void _showCreateTemplateUnavailable(
+    BuildContext context,
+    String templateType,
+  ) {
+    AppSnackbar.show(
+      context,
+      message: '$templateType template creation is coming soon.',
+      type: SnackbarType.info,
+    );
   }
 
   @override
@@ -50,30 +72,132 @@ class _AllRcsTemplateScreenState extends State<AllRcsTemplateScreen> {
 
     return BlocProvider(
       create: (_) =>
-          ManageTempleteBloc(repo: AppInjector.manageTemplateRepo)
+          ManageTempleteBloc(repo: AppInjector.rcsTemplateRepo)
             ..add(const FetchManageTempleteEvent()),
       child: Builder(
         builder: (context) {
-          return Scaffold(
-            backgroundColor: c.bg,
-            appBar: widget.showAppBar
-                ? CustomAppBar(
-                    title: 'Manage Template',
-                    subtitle: _appBarSubtitle(context),
-                    backgroundColor: c.surface,
-                    titleColor: c.textPrimary,
-                    subtitleColor: c.textSecondary,
-                    onBack: () => Navigator.pop(context),
-                    trailing: _FilterButton(
-                      filterNotifier: _filterNotifier,
-                      onTap: () => _showFilterSheet(context),
+          return GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            child: Scaffold(
+              backgroundColor: c.bg,
+              appBar: widget.showAppBar
+                  ? CustomAppBar(
+                      title: 'Manage Template',
+                      subtitle: _appBarSubtitle(context),
+                      backgroundColor: c.surface,
+                      titleColor: c.textPrimary,
+                      subtitleColor: c.textSecondary,
+                      onBack: () => Navigator.pop(context),
+                      trailing: _FilterButton(
+                        filterNotifier: _filterNotifier,
+                        onTap: () => _showFilterSheet(context),
+                      ),
+                    )
+                  : null,
+              body: ValueListenableBuilder<bool>(
+                valueListenable: _fabNotifier,
+                builder: (context, fabOpen, _) {
+                  return SafeArea(
+                    top: false,
+                    minimum: const EdgeInsets.only(top: 10),
+                    child: Stack(
+                      children: [
+                        _TemplateDisplayView(filterNotifier: _filterNotifier),
+
+                        if (fabOpen)
+                          Positioned.fill(
+                            child: GestureDetector(
+                              onTap: () {
+                                _fabNotifier.value = false;
+                              },
+
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(
+                                  sigmaX: 4,
+                                  sigmaY: 4,
+                                  tileMode: TileMode.clamp,
+                                ),
+
+                                child: Container(
+                                  color: Colors.black.withOpacity(
+                                    context.isDark ? 0.25 : 0.08,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  )
-                : null,
-            body: SafeArea(
-              top: false,
-              minimum: const EdgeInsets.only(top: 10),
-              child: _TemplateDisplayView(filterNotifier: _filterNotifier),
+                  );
+                },
+              ),
+              floatingActionButton: ValueListenableBuilder<bool>(
+                valueListenable: _fabNotifier,
+                builder: (context, fabOpen, _) {
+                  return SpeedDial(
+                    openCloseDial: _fabNotifier,
+                    icon: Icons.add_rounded,
+                    activeIcon: Icons.close_rounded,
+                    label: const Text('Create Template'),
+                    activeLabel: const Text('Close'),
+                    tooltip: 'Create Template',
+                    backgroundColor: c.primary,
+                    foregroundColor: c.onBrand,
+                    elevation: 0,
+                    spacing: 10,
+                    spaceBetweenChildren: 0,
+                    animationCurve: Curves.easeOutCubic,
+                    animationDuration: const Duration(milliseconds: 260),
+                    overlayColor: Colors.black,
+                    overlayOpacity: 0.35,
+                    childrenButtonSize: const Size(56, 56),
+                    buttonSize: const Size(50, 50),
+                    shape: const CircleBorder(),
+                    children: [
+                      _buildDialChild(
+                        context: context,
+                        c: c,
+                        icon: Icons.sms_outlined,
+                        iconColor: c.primary,
+                        label: 'Text RCS',
+                        subtitle: 'Create text message',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => TextRcsCreateScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildDialChild(
+                        context: context,
+                        c: c,
+                        icon: Icons.view_agenda_outlined,
+                        iconColor: c.primary,
+                        label: 'Rich Card',
+                        subtitle: 'Create media card',
+                        onTap: () => _showCreateTemplateUnavailable(
+                          context,
+                          'Rich Card',
+                        ),
+                      ),
+                      _buildDialChild(
+                        context: context,
+                        c: c,
+                        icon: Icons.view_carousel_outlined,
+                        iconColor: c.primary,
+                        label: 'Carousal',
+                        subtitle: 'Create card carousel',
+                        onTap: () =>
+                            _showCreateTemplateUnavailable(context, 'Carousal'),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              floatingActionButtonLocation:
+                  FloatingActionButtonLocation.endFloat,
             ),
           );
         },
@@ -96,6 +220,60 @@ class _AllRcsTemplateScreenState extends State<AllRcsTemplateScreen> {
     return filter == RCSTemplateFilterEnum.all
         ? '0 templates'
         : '0 ${filter.label} templates';
+  }
+
+  SpeedDialChild _buildDialChild({
+    required BuildContext context,
+    required AppColors c,
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return SpeedDialChild(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      labelWidget: Container(
+        margin: const EdgeInsets.only(right: 70),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: c.surfaceHigh,
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(color: c.borderStrong, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: c.textPrimary,
+                fontWeight: FontWeight.w600,
+                fontSize: 13.5,
+                letterSpacing: 0.1,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: c.textPrimary.withOpacity(0.55),
+                fontWeight: FontWeight.w400,
+                fontSize: 11,
+                letterSpacing: 0.1,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+      shape: const CircleBorder(),
+
+      onTap: onTap,
+    );
   }
 }
 
@@ -186,21 +364,10 @@ class _TemplateDisplayViewState extends State<_TemplateDisplayView> {
     _retry();
   }
 
-  void _showTemplateDetails(RcsTemplateData template) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      useSafeArea: true,
-      builder: (_) => _TemplateDetailSheet(template: template),
-    );
-  }
-
-  void _showDeleteUnavailable() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Delete template API is not available yet.'),
-        behavior: SnackBarBehavior.floating,
+  void _showTemplateDetails(RcsTemplateDataModel template) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TemplateViewDetails(templateData: template),
       ),
     );
   }
@@ -287,7 +454,10 @@ class _TemplateDisplayViewState extends State<_TemplateDisplayView> {
                       return RcsTemplateCard(
                         template: template,
                         onView: () => _showTemplateDetails(template),
-                        onDelete: _showDeleteUnavailable,
+                        onDelete: () =>
+                            _showDeleteDialog(context, template, () async {
+                              _fetchFirstPage();
+                            }),
                       );
                     },
                   ),
@@ -300,6 +470,80 @@ class _TemplateDisplayViewState extends State<_TemplateDisplayView> {
       ],
     );
   }
+}
+
+void _showDeleteDialog(
+  BuildContext context,
+  RcsTemplateDataModel templateData,
+  final Future<void> Function()? onRefresh,
+) {
+  final c = context.colors;
+
+  final isDeleting = ValueNotifier(false);
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) {
+      return ValueListenableBuilder<bool>(
+        valueListenable: isDeleting,
+        builder: (context, deleting, _) {
+          return DeleteDialog(
+            title: 'Delete Template',
+            message:
+                'Are you sure you want to delete "${templateData.name}"? This action cannot be undone.',
+
+            confirmLabel: deleting ? 'Deleting...' : 'Delete',
+            confirmColor: c.error,
+
+            onConfirm: () async {
+              if (deleting) return;
+
+              isDeleting.value = true;
+
+              try {
+                final response = await AppInjector.rcsTemplateRepo
+                    .deleteRcsTemplate(id: templateData.id.toString());
+                if (!context.mounted) return;
+
+                Navigator.pop(dialogContext);
+
+                if (response['success'].toString() == 'true') {
+                  AppSnackbar.show(
+                    context,
+                    message: 'Template deleted successfully',
+                    type: SnackbarType.success,
+                  );
+
+                  await onRefresh?.call();
+                } else {
+                  debugPrint("${response['message'] ?? 'Delete failed'}");
+                  AppSnackbar.show(
+                    context,
+                    message: 'Template Delete failed',
+                    type: SnackbarType.error,
+                  );
+                }
+              } catch (e) {
+                if (!context.mounted) return;
+
+                Navigator.pop(dialogContext);
+                debugPrint("Error in Delete Template $e");
+
+                AppSnackbar.show(
+                  context,
+                  message: 'Something went wrong',
+                  type: SnackbarType.error,
+                );
+              } finally {
+                isDeleting.dispose();
+              }
+            },
+          );
+        },
+      );
+    },
+  );
 }
 
 class _FilterButton extends StatelessWidget {
@@ -566,115 +810,6 @@ class _TemplateErrorView extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _TemplateDetailSheet extends StatelessWidget {
-  final RcsTemplateData template;
-
-  const _TemplateDetailSheet({required this.template});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final variables = template.templateDetails?.variables ?? const <String>[];
-
-    return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-      decoration: BoxDecoration(
-        color: c.bottomSheet,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.border),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  template.name.isEmpty ? 'Untitled Template' : template.name,
-                  style: TextStyle(
-                    color: c.textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: Icon(Icons.close_rounded, color: c.textSecondary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _DetailLine(label: 'Type', value: template.type),
-          _DetailLine(label: 'Status', value: template.status),
-          _DetailLine(
-            label: 'Category',
-            value: template.templateDetails?.category ?? '',
-          ),
-          if (variables.isNotEmpty)
-            _DetailLine(label: 'Variables', value: variables.join(', ')),
-          if (template.textMessageContent.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              'Message',
-              style: TextStyle(
-                color: c.textMuted,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              template.textMessageContent,
-              style: TextStyle(color: c.textPrimary, fontSize: 13, height: 1.4),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _DetailLine extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _DetailLine({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 86,
-            child: Text(
-              label,
-              style: TextStyle(color: c.textMuted, fontSize: 12),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value.trim().isEmpty ? '--' : value,
-              style: TextStyle(
-                color: c.textPrimary,
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

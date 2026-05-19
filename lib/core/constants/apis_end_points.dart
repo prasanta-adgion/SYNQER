@@ -51,4 +51,7 @@ class APIsEndPoints {
   static const String sendRcsBulkMessages = "user/api/v1/rcs/send-rcs-bulk";
 
   static const String getRcsTemplates = "user/api/v1/rcs/my-templates";
+
+  static String deleteRcsTemplate(String id) =>
+      "user/api/v1/rcs/delete-rcs-template/$id";
 }

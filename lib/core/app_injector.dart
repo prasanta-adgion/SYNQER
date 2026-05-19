@@ -48,7 +48,7 @@ class AppInjector {
   static final RcsPreviewRepo rcsPreviewRepo = RcsPreviewRepo(dio: dio);
 
   //get rcs manage templates
-  static final ManageTemplateRepo manageTemplateRepo = ManageTemplateRepo(
+  static final ManageTemplateRepo rcsTemplateRepo = ManageTemplateRepo(
     dio: dio,
   );
 

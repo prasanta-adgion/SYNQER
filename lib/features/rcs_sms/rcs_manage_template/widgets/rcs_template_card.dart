@@ -4,7 +4,7 @@ import 'package:synqer_io/core/widgets/app_popover_dailog.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_manage_template/model/manage_template_model.dart';
 
 class RcsTemplateCard extends StatelessWidget {
-  final RcsTemplateData template;
+  final RcsTemplateDataModel template;
   final VoidCallback onView;
   final VoidCallback onDelete;
 

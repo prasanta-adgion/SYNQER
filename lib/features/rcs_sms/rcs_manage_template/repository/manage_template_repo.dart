@@ -7,7 +7,7 @@ class ManageTemplateRepo {
   final DioMethodsService dio;
   const ManageTemplateRepo({required this.dio});
 
-  Future<PaginatedResponse<RcsTemplateData>> fetchRcsTemplate({
+  Future<PaginatedResponse<RcsTemplateDataModel>> fetchRcsTemplate({
     required int page,
     required int limit,
     final String? templateType,
@@ -20,7 +20,7 @@ class ManageTemplateRepo {
         "page": page,
         "limit": limit,
         "type": templateType,
-        "name": search,
+        "search": search,
       },
     );
 
@@ -57,10 +57,18 @@ class ManageTemplateRepo {
       data: data,
     );
   }
+
+  Future<dynamic> deleteRcsTemplate({required String id}) async {
+    final response = await dio.delete(
+      APIsEndPoints.deleteRcsTemplate(id),
+      requiresAuth: true,
+    );
+    return response;
+  }
 }
 
-List<RcsTemplateData> parseRcsTemplateResponse(dynamic json) {
+List<RcsTemplateDataModel> parseRcsTemplateResponse(dynamic json) {
   return (json['data'] as List)
-      .map((e) => RcsTemplateData.fromJson(e))
+      .map((e) => RcsTemplateDataModel.fromJson(e))
       .toList();
 }
