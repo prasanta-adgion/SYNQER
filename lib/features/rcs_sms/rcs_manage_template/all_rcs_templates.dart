@@ -17,6 +17,7 @@ import 'package:synqer_io/features/rcs_sms/rcs_manage_template/model/manage_temp
 import 'package:synqer_io/features/rcs_sms/rcs_manage_template/widgets/rcs_template_card.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_manage_template/widgets/rcs_template_empty.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_manage_template/widgets/template_view_details.dart';
+import 'package:synqer_io/features/rcs_sms/template_create/richcard_rcs/richcard_rcs_create_screen.dart';
 import 'package:synqer_io/features/rcs_sms/template_create/text_rcs/text_rcs_create.dart';
 import 'package:synqer_io/features/search_bar/search_bar_screen.dart';
 
@@ -63,6 +64,46 @@ class _AllRcsTemplateScreenState extends State<AllRcsTemplateScreen> {
       context,
       message: '$templateType template creation is coming soon.',
       type: SnackbarType.info,
+    );
+  }
+
+  Future<void> _openTextTemplateCreate(BuildContext context) async {
+    _fabNotifier.value = false;
+
+    final created = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => const TextRcsCreateScreen()),
+    );
+
+    if (!context.mounted || created != true) return;
+
+    final filter = _filterNotifier.value;
+    context.read<ManageTempleteBloc>().add(
+      FetchManageTempleteEvent(
+        templateType: filter == RCSTemplateFilterEnum.all
+            ? null
+            : filter.apiValue,
+      ),
+    );
+  }
+
+  Future<void> _openRichCardTemplateCreate(BuildContext context) async {
+    _fabNotifier.value = false;
+
+    final created = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => const RichCardRcsCreateScreen()),
+    );
+
+    if (!context.mounted || created != true) return;
+
+    final filter = _filterNotifier.value;
+    context.read<ManageTempleteBloc>().add(
+      FetchManageTempleteEvent(
+        templateType: filter == RCSTemplateFilterEnum.all
+            ? null
+            : filter.apiValue,
+      ),
     );
   }
 
@@ -162,12 +203,7 @@ class _AllRcsTemplateScreenState extends State<AllRcsTemplateScreen> {
                         label: 'Text RCS',
                         subtitle: 'Create text message',
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => TextRcsCreateScreen(),
-                            ),
-                          );
+                          _openTextTemplateCreate(context);
                         },
                       ),
                       _buildDialChild(
@@ -177,10 +213,7 @@ class _AllRcsTemplateScreenState extends State<AllRcsTemplateScreen> {
                         iconColor: c.primary,
                         label: 'Rich Card',
                         subtitle: 'Create media card',
-                        onTap: () => _showCreateTemplateUnavailable(
-                          context,
-                          'Rich Card',
-                        ),
+                        onTap: () => _openRichCardTemplateCreate(context),
                       ),
                       _buildDialChild(
                         context: context,

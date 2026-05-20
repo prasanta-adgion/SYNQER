@@ -1,55 +1,66 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
-import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
+import 'package:synqer_io/core/utils/any_file_picker.dart';
 import 'package:synqer_io/core/widgets/app_custom_button.dart';
 import 'package:synqer_io/core/widgets/app_snackbar.dart';
 import 'package:synqer_io/core/widgets/custom_appbar.dart';
 import 'package:synqer_io/core/widgets/custom_text_fields.dart';
+import 'package:synqer_io/core/widgets/filepicker_bottomsheet.dart';
+import 'package:synqer_io/features/live_chat/single_conversion/widgets/media_preview_screen.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_preview_campaign/model/templete_details_model.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_preview_campaign/utils/rcs_preview_template_mapper.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_preview_campaign/widgets/phone_preview.dart';
-import 'package:synqer_io/features/rcs_sms/template_create/text_rcs/bloc/create_text_rcs_template_bloc.dart';
 import 'package:synqer_io/features/rcs_sms/template_create/widgets/suggestions_section.dart';
 
-class TextRcsCreateScreen extends StatefulWidget {
-  const TextRcsCreateScreen({super.key});
+class RichCardRcsCreateScreen extends StatefulWidget {
+  const RichCardRcsCreateScreen({super.key});
 
   @override
-  State<TextRcsCreateScreen> createState() => _TextRcsCreateScreenState();
+  State<RichCardRcsCreateScreen> createState() =>
+      _RichCardRcsCreateScreenState();
 }
 
-class _TextRcsCreateScreenState extends State<TextRcsCreateScreen> {
+class _RichCardRcsCreateScreenState extends State<RichCardRcsCreateScreen> {
+  static const int _maxVideoBytes = 10 * 1024 * 1024;
+
   final nameController = TextEditingController();
-  final msgController = TextEditingController();
+  final titleController = TextEditingController();
+  final descriptionController = TextEditingController();
 
   final _formNotifier = ValueNotifier<int>(0);
   final _variablesNotifier = ValueNotifier<List<String>>(['var1']);
   final _suggestionsNotifier = ValueNotifier<List<RcsSuggestionController>>([]);
+  final _mediaNotifier = ValueNotifier<AppPickedFile?>(null);
 
   @override
   void initState() {
     super.initState();
     nameController.addListener(_notifyPreview);
-    msgController.addListener(_notifyPreview);
+    titleController.addListener(_notifyPreview);
+    descriptionController.addListener(_notifyPreview);
     _variablesNotifier.addListener(_notifyPreview);
+    _mediaNotifier.addListener(_notifyPreview);
   }
 
   @override
   void dispose() {
     nameController.removeListener(_notifyPreview);
-    msgController.removeListener(_notifyPreview);
+    titleController.removeListener(_notifyPreview);
+    descriptionController.removeListener(_notifyPreview);
     _variablesNotifier.removeListener(_notifyPreview);
+    _mediaNotifier.removeListener(_notifyPreview);
     nameController.dispose();
-    msgController.dispose();
+    titleController.dispose();
+    descriptionController.dispose();
     for (final suggestion in _suggestionsNotifier.value) {
       suggestion.dispose();
     }
     _formNotifier.dispose();
     _variablesNotifier.dispose();
     _suggestionsNotifier.dispose();
+    _mediaNotifier.dispose();
     super.dispose();
   }
 
@@ -64,12 +75,12 @@ class _TextRcsCreateScreenState extends State<TextRcsCreateScreen> {
     _variablesNotifier.value = variables;
 
     final insertion = '[$nextVariable]';
-    final selection = msgController.selection;
-    final text = msgController.text;
+    final selection = descriptionController.selection;
+    final text = descriptionController.text;
     final start = selection.isValid ? selection.start : text.length;
     final end = selection.isValid ? selection.end : text.length;
-    msgController.text = text.replaceRange(start, end, insertion);
-    msgController.selection = TextSelection.collapsed(
+    descriptionController.text = text.replaceRange(start, end, insertion);
+    descriptionController.selection = TextSelection.collapsed(
       offset: start + insertion.length,
     );
   }
@@ -91,107 +102,65 @@ class _TextRcsCreateScreenState extends State<TextRcsCreateScreen> {
     _notifyPreview();
   }
 
-  void _submitTemplate(BuildContext context) {
-    final name = nameController.text.trim();
-    final message = msgController.text.trim();
+  Future<void> _pickMedia() async {
+    final file = await FilePickerBottomSheet.show(context);
+    if (file == null) return;
 
-    if (name.isEmpty) {
+    if (!_isAllowedMedia(file)) {
+      if (!mounted) return;
       AppSnackbar.show(
         context,
-        message: 'Template name is required.',
+        message: 'Please upload an image, video or PDF.',
         type: SnackbarType.error,
       );
       return;
     }
 
-    if (message.isEmpty) {
+    if (file.isVideo && (file.size ?? 0) > _maxVideoBytes) {
+      if (!mounted) return;
       AppSnackbar.show(
         context,
-        message: 'Message content is required.',
+        message: 'Max video upload size is 10 MB.',
         type: SnackbarType.error,
       );
       return;
     }
 
-    final suggestions = _buildSuggestionsPayload(context);
-    if (suggestions == null) return;
+    if (!mounted) return;
 
-    context.read<CreateTextRcsTemplateBloc>().add(
-      CreateTextRcsTemplateSubmitted(
-        name: name,
-        textMessageContent: message,
-        suggestions: suggestions,
+    AppPickedFile? previewedFile;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MediaPreviewScreen(
+          file: file,
+          onSend: (selectedFile, _) {
+            previewedFile = selectedFile;
+          },
+          forChatScreen: false,
+        ),
       ),
     );
+
+    if (previewedFile == null) return;
+
+    _mediaNotifier.value = previewedFile;
   }
 
-  List<Map<String, dynamic>>? _buildSuggestionsPayload(BuildContext context) {
-    final payload = <Map<String, dynamic>>[];
-
-    for (final suggestion in _suggestionsNotifier.value) {
-      final displayText = suggestion.displayText.trim();
-      if (displayText.isEmpty) continue;
-
-      final postback = suggestion.postback.trim();
-      if (postback.isEmpty) {
-        AppSnackbar.show(
-          context,
-          message: 'Postback is required for "$displayText".',
-          type: SnackbarType.error,
-        );
-        return null;
-      }
-
-      final normalizedType = normalizeRcsSuggestionType(suggestion.type);
-      final item = <String, dynamic>{
-        'suggestionType': normalizedType,
-        'displayText': displayText,
-        'postback': postback,
-      };
-
-      if (normalizedType == 'url_action') {
-        final url = suggestion.url.trim();
-        if (url.isEmpty) {
-          AppSnackbar.show(
-            context,
-            message: 'URL is required for "$displayText".',
-            type: SnackbarType.error,
-          );
-          return null;
-        }
-        item['url'] = url;
-      }
-
-      if (normalizedType == 'dialer_action') {
-        final phoneNumber = suggestion.phoneNumber.trim();
-        if (phoneNumber.isEmpty) {
-          AppSnackbar.show(
-            context,
-            message: 'Phone number is required for "$displayText".',
-            type: SnackbarType.error,
-          );
-          return null;
-        }
-        item['phoneNumber'] = phoneNumber;
-      }
-
-      payload.add(item);
-    }
-
-    return payload;
-  }
-
-  void _showSuccess(String message) {
-    AppSnackbar.show(context, message: message, type: SnackbarType.success);
-
-    Navigator.pop(context, true);
+  void _showCreateUnavailable() {
+    AppSnackbar.show(
+      context,
+      message: 'Create rich card template API is not connected yet.',
+      type: SnackbarType.error,
+    );
   }
 
   TemplateData _previewTemplate() {
     final suggestions = _suggestionsNotifier.value
+        .where((suggestion) => suggestion.displayText.trim().isNotEmpty)
         .map(
-          (suggestion) => RcsPreviewSuggestionInput(
-            suggestionType: suggestion.type,
+          (suggestion) => SuggestionModel(
+            suggestionType: normalizeRcsSuggestionType(suggestion.type),
             displayText: suggestion.displayText.trim(),
             postback: suggestion.postback.trim(),
             url: suggestion.type == 'URL' ? suggestion.url.trim() : null,
@@ -201,12 +170,26 @@ class _TextRcsCreateScreenState extends State<TextRcsCreateScreen> {
           ),
         )
         .toList();
+    final media = _mediaNotifier.value;
 
-    return buildTextRcsPreviewTemplate(
-      name: nameController.text,
-      message: msgController.text,
-      variables: _variablesNotifier.value,
-      suggestions: suggestions,
+    return TemplateData(
+      id: 'rich-card-live-preview',
+      name: nameController.text.trim().isEmpty
+          ? 'Your Bot'
+          : nameController.text.trim(),
+      type: 'rich_card',
+      standAlone: StandAloneCard(
+        cardTitle: titleController.text.trim().isEmpty
+            ? 'Card title'
+            : titleController.text.trim(),
+        cardDescription: descriptionController.text.trim().isEmpty
+            ? 'Your card description goes here'
+            : descriptionController.text,
+        fileName: media?.path,
+        suggestions: suggestions,
+      ),
+      mediaUrls: media?.path == null ? const [] : [media!.path!],
+      status: 'draft',
     );
   }
 
@@ -214,109 +197,93 @@ class _TextRcsCreateScreenState extends State<TextRcsCreateScreen> {
   Widget build(BuildContext context) {
     final c = context.colors;
 
-    return BlocProvider(
-      create: (_) =>
-          CreateTextRcsTemplateBloc(repo: AppInjector.textRcsTemplateRepo),
-      child:
-          BlocConsumer<CreateTextRcsTemplateBloc, CreateTextRcsTemplateState>(
-            listener: (context, state) {
-              if (state is CreateTextRcsTemplateSuccess) {
-                _showSuccess(state.message);
-              }
+    return Scaffold(
+      backgroundColor: c.bg,
+      appBar: CustomAppBar(
+        title: 'Create Rich Card RCS Template',
+        subtitle: 'Create media-rich RCS templates',
+        backgroundColor: c.surface,
+        titleColor: c.textPrimary,
+        subtitleColor: c.textSecondary,
+        onBack: () => Navigator.pop(context),
+      ),
+      body: SafeArea(
+        top: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 920;
+            final form = _RichCardForm(
+              nameController: nameController,
+              titleController: titleController,
+              descriptionController: descriptionController,
+              mediaNotifier: _mediaNotifier,
+              suggestionsNotifier: _suggestionsNotifier,
+              onAddVariable: _addVariable,
+              onPickMedia: _pickMedia,
+              onAddSuggestion: _addSuggestion,
+              onDeleteSuggestion: _deleteSuggestion,
+              onCreate: _showCreateUnavailable,
+            );
+            final preview = ValueListenableBuilder<int>(
+              valueListenable: _formNotifier,
+              builder: (context, _, __) {
+                return _LivePreview(template: _previewTemplate());
+              },
+            );
 
-              if (state is CreateTextRcsTemplateError) {
-                AppSnackbar.show(
-                  context,
-                  message: state.message,
-                  type: SnackbarType.error,
-                );
-              }
-            },
-            builder: (context, state) {
-              final isCreating = state is CreateTextRcsTemplateLoading;
-
-              return Scaffold(
-                backgroundColor: c.bg,
-                appBar: CustomAppBar(
-                  title: 'Create Text RCS Template',
-                  subtitle: 'Create engaging text-based RCS templates',
-                  backgroundColor: c.surface,
-                  titleColor: c.textPrimary,
-                  subtitleColor: c.textSecondary,
-                  onBack: () => Navigator.pop(context),
-                ),
-                body: SafeArea(
-                  top: false,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isNarrow = constraints.maxWidth < 920;
-                      final form = _TemplateForm(
-                        nameController: nameController,
-                        msgController: msgController,
-                        suggestionsNotifier: _suggestionsNotifier,
-                        onAddVariable: _addVariable,
-                        onAddSuggestion: _addSuggestion,
-                        onDeleteSuggestion: _deleteSuggestion,
-                        onCreate: isCreating
-                            ? null
-                            : () => _submitTemplate(context),
-                        isCreating: isCreating,
-                      );
-                      final preview = ValueListenableBuilder<int>(
-                        valueListenable: _formNotifier,
-                        builder: (context, _, __) {
-                          final template = _previewTemplate();
-                          return _LivePreview(template: template);
-                        },
-                      );
-
-                      if (isNarrow) {
-                        return ListView(
-                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
-                          children: [form, const SizedBox(height: 16), preview],
-                        );
-                      }
-
-                      return Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(flex: 7, child: form),
-                            const SizedBox(width: 18),
-                            SizedBox(width: 320, child: preview),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
+            if (isNarrow) {
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
+                children: [form, const SizedBox(height: 16), preview],
               );
-            },
-          ),
+            }
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 7, child: form),
+                  const SizedBox(width: 18),
+                  SizedBox(width: 320, child: preview),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
     );
+  }
+
+  bool _isAllowedMedia(AppPickedFile file) {
+    final extension = file.extension?.toLowerCase();
+    return file.isImage || file.isVideo || extension == 'pdf';
   }
 }
 
-class _TemplateForm extends StatelessWidget {
+class _RichCardForm extends StatelessWidget {
   final TextEditingController nameController;
-  final TextEditingController msgController;
+  final TextEditingController titleController;
+  final TextEditingController descriptionController;
+  final ValueNotifier<AppPickedFile?> mediaNotifier;
   final ValueNotifier<List<RcsSuggestionController>> suggestionsNotifier;
   final VoidCallback onAddVariable;
+  final VoidCallback onPickMedia;
   final VoidCallback onAddSuggestion;
   final ValueChanged<RcsSuggestionController> onDeleteSuggestion;
-  final VoidCallback? onCreate;
-  final bool isCreating;
+  final VoidCallback onCreate;
 
-  const _TemplateForm({
+  const _RichCardForm({
     required this.nameController,
-    required this.msgController,
+    required this.titleController,
+    required this.descriptionController,
+    required this.mediaNotifier,
     required this.suggestionsNotifier,
     required this.onAddVariable,
+    required this.onPickMedia,
     required this.onAddSuggestion,
     required this.onDeleteSuggestion,
     required this.onCreate,
-    this.isCreating = false,
   });
 
   @override
@@ -342,7 +309,7 @@ class _TemplateForm extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Text Template Details',
+            'Rich Card Template Details',
             style: TextStyle(
               color: c.textPrimary,
               fontSize: 15,
@@ -356,14 +323,23 @@ class _TemplateForm extends StatelessWidget {
           const SizedBox(height: 8),
           CustomTextFormField(
             controller: nameController,
-            hint_text: 'e.g. order_confirmation',
+            hint_text: 'e.g. promo_card_01',
             inputFormatters: [LengthLimitingTextInputFormatter(40)],
             suffixIcon: _CharacterCount(controller: nameController, max: 40),
           ),
           const SizedBox(height: 18),
+          _FieldLabel(label: 'Card Title *'),
+          const SizedBox(height: 8),
+          CustomTextFormField(
+            controller: titleController,
+            hint_text: 'e.g. Summer Sale',
+            inputFormatters: [LengthLimitingTextInputFormatter(50)],
+            suffixIcon: _CharacterCount(controller: titleController, max: 50),
+          ),
+          const SizedBox(height: 18),
           Row(
             children: [
-              const _FieldLabel(label: 'Message Content *'),
+              const _FieldLabel(label: 'Card Description'),
               const Spacer(),
               _SmallActionButton(
                 icon: Icons.add_rounded,
@@ -374,10 +350,29 @@ class _TemplateForm extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           CustomTextFormField(
-            controller: msgController,
-            hint_text: 'Hi [var1], your order [var2] has been confirmed...',
-            maxLines: 3,
-            inputFormatters: [LengthLimitingTextInputFormatter(1000)],
+            controller: descriptionController,
+            hint_text: 'Your card description goes here',
+            maxLines: 4,
+            inputFormatters: [LengthLimitingTextInputFormatter(2000)],
+            suffixIcon: _CharacterCount(
+              controller: descriptionController,
+              max: 2000,
+            ),
+          ),
+          const SizedBox(height: 18),
+          const _FieldLabel(label: 'Media (Image / Video / PDF) *'),
+          const SizedBox(height: 8),
+          ValueListenableBuilder<AppPickedFile?>(
+            valueListenable: mediaNotifier,
+            builder: (context, file, _) {
+              return _MediaUploadBox(file: file, onTap: onPickMedia);
+            },
+          ),
+          const SizedBox(height: 10),
+
+          Text(
+            'Note: Max video upload size is 10 MB.',
+            style: TextStyle(color: c.textMuted, fontSize: 11),
           ),
           const SizedBox(height: 22),
           SuggestionsSection(
@@ -391,14 +386,72 @@ class _TemplateForm extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: AppButton(
-              text: isCreating ? 'Creating...' : 'Create Template',
+              text: 'Create Template',
               onPressed: onCreate,
               bgColor: c.primary,
               icon: CupertinoIcons.create_solid,
-              loading: isCreating,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MediaUploadBox extends StatelessWidget {
+  final AppPickedFile? file;
+  final VoidCallback onTap;
+
+  const _MediaUploadBox({required this.file, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final hasFile = file != null;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+        decoration: BoxDecoration(
+          color: c.inputFill,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: hasFile ? c.primary.withValues(alpha: 0.45) : c.inputBorder,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: c.accentSoft,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                hasFile ? Icons.insert_drive_file_outlined : Icons.upload_file,
+                color: c.primary,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                hasFile ? file!.name : 'Click to upload image, video or PDF',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: hasFile ? c.textPrimary : c.inputHint,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -436,7 +489,7 @@ class _LivePreview extends StatelessWidget {
           child: CreateLiveTemplatePhonePreview(
             template: template,
             title: template.name ?? 'Your Bot',
-            icon: Icons.chat_bubble_rounded,
+            icon: Icons.view_agenda_outlined,
           ),
         ),
         const SizedBox(height: 9),

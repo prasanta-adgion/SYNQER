@@ -54,4 +54,11 @@ class APIsEndPoints {
 
   static String deleteRcsTemplate(String id) =>
       "user/api/v1/rcs/delete-rcs-template/$id";
+
+  // RCS Template create
+  static const String createTextRcsTemplate =
+      "user/api/v1/rcs/approve-text-template";
+
+  static const String createRichCardRcsTemplate =
+      "user/api/v1/rcs/approve-rich-card-template";
 }

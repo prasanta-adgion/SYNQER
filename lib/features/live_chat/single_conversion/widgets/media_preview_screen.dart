@@ -8,18 +8,21 @@ import 'package:synqer_io/core/enums/filepick_type_enum.dart';
 import 'package:synqer_io/core/theme/app_colors.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/utils/any_file_picker.dart';
+import 'package:synqer_io/core/widgets/app_custom_button.dart';
 import 'package:synqer_io/core/widgets/custom_appbar.dart';
 import 'package:synqer_io/core/widgets/image_cropper.dart';
 import 'package:video_player/video_player.dart';
 
 class MediaPreviewScreen extends StatefulWidget {
   final AppPickedFile file;
+  final bool forChatScreen;
   final Function(AppPickedFile file, String caption) onSend;
 
   const MediaPreviewScreen({
     super.key,
     required this.file,
     required this.onSend,
+    required this.forChatScreen,
   });
 
   @override
@@ -187,7 +190,25 @@ class _MediaPreviewScreenState extends State<MediaPreviewScreen> {
         child: Column(
           children: [
             Expanded(child: Center(child: _buildPreview(c))),
-            _buildBottomBar(c),
+            widget.forChatScreen
+                ? _buildBottomBar(c)
+                : Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 10,
+                    ),
+                    child: AppButton(
+                      text: 'Done',
+                      onPressed: () {
+                        widget.onSend(
+                          _currentFile,
+                          _captionController.text.trim(),
+                        );
+                        Navigator.pop(context);
+                      },
+                      bgColor: c.primary,
+                    ),
+                  ),
           ],
         ),
       ),

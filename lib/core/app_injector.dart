@@ -10,6 +10,7 @@ import 'package:synqer_io/features/profile/repository/profile_repo.dart';
 import 'package:synqer_io/features/rcs_sms/create_campaign/repository/send_rcsmessage_repo.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_manage_template/repository/manage_template_repo.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_preview_campaign/repository/rcs_preview_repo.dart';
+import 'package:synqer_io/features/rcs_sms/template_create/text_rcs/repository/textrcs_template_repo.dart';
 import 'package:synqer_io/features/transaction_screen/repository/transaction_get_repo.dart';
 import 'package:synqer_io/features/user_login/repo/login_repo.dart';
 
@@ -54,6 +55,11 @@ class AppInjector {
 
   //send rcs campaign
   static final SendRcsmessageRepo sendRcsmessageRepo = SendRcsmessageRepo(
+    dio: dio,
+  );
+
+  //create text rcs template
+  static final TextRcsTemplateRepo textRcsTemplateRepo = TextRcsTemplateRepo(
     dio: dio,
   );
 

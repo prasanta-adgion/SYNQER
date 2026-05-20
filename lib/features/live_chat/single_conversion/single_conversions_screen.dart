@@ -386,6 +386,7 @@ class _SingleChatState extends State<SingleChat> {
                               builder: (_) => MediaPreviewScreen(
                                 file: file,
                                 onSend: sendMediaMessage,
+                                forChatScreen: true,
                               ),
                             ),
                           );

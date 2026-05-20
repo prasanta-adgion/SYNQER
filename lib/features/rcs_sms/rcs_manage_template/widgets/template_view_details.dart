@@ -4,6 +4,7 @@ import 'package:synqer_io/core/widgets/custom_appbar.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_manage_template/model/manage_template_model.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_preview_campaign/model/templete_details_model.dart'
     as preview_model;
+import 'package:synqer_io/features/rcs_sms/rcs_preview_campaign/utils/rcs_preview_template_mapper.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_preview_campaign/widgets/phone_preview.dart';
 
 class TemplateViewDetails extends StatelessWidget {
@@ -14,7 +15,7 @@ class TemplateViewDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final previewTemplate = _toPreviewTemplate(templateData);
+    final previewTemplate = mapManageTemplateToPreviewTemplate(templateData);
 
     return Scaffold(
       backgroundColor: c.bg,
@@ -84,7 +85,7 @@ class _PreviewPanel extends StatelessWidget {
           child: TemplatePhonePreview(
             template: previewTemplate,
             title: template.name,
-            icon: _templateIcon(template.type),
+            icon: rcsTemplateIcon(template.type),
           ),
         ),
       ),
@@ -498,72 +499,6 @@ class _StatusPill extends StatelessWidget {
       ),
     );
   }
-}
-
-preview_model.TemplateData _toPreviewTemplate(RcsTemplateDataModel template) {
-  return preview_model.TemplateData(
-    id: template.id,
-    userId: template.userId,
-    name: template.name,
-    type: template.type,
-    templateDetails: template.templateDetails == null
-        ? null
-        : preview_model.TemplateDetails(
-            variables: template.templateDetails!.variables,
-            category: template.templateDetails!.category,
-          ),
-    textMessageContent: template.textMessageContent,
-    suggestions: template.suggestions.map(_toPreviewSuggestion).toList(),
-    orientation: template.orientation,
-    height: template.height,
-    width: template.width,
-    standAlone: template.standAlone == null
-        ? null
-        : preview_model.StandAloneCard(
-            cardTitle: template.standAlone!.cardTitle,
-            cardDescription: template.standAlone!.cardDescription,
-            fileName: template.standAlone!.fileName,
-            suggestions: template.standAlone!.suggestions
-                .map(_toPreviewSuggestion)
-                .toList(),
-          ),
-    carouselList: template.carouselList.map(_toPreviewCarouselCard).toList(),
-    mediaUrls: template.mediaUrls,
-    status: template.status,
-    rmlResponse: template.rmlResponse,
-    createdAt: template.createdAt,
-    updatedAt: template.updatedAt,
-    version: template.version,
-  );
-}
-
-preview_model.CarouselCard _toPreviewCarouselCard(CarouselCard card) {
-  return preview_model.CarouselCard(
-    cardTitle: card.cardTitle,
-    cardDescription: card.cardDescription,
-    fileName: card.fileName,
-    suggestions: card.suggestions.map(_toPreviewSuggestion).toList(),
-  );
-}
-
-preview_model.SuggestionModel _toPreviewSuggestion(SuggestionModel suggestion) {
-  return preview_model.SuggestionModel(
-    suggestionType: suggestion.suggestionType,
-    displayText: suggestion.displayText,
-    postback: suggestion.postback,
-    phoneNumber: suggestion.phoneNumber,
-    url: suggestion.url,
-  );
-}
-
-IconData _templateIcon(String type) {
-  final normalized = type.toLowerCase();
-  if (normalized.contains('carousel')) return Icons.view_carousel_outlined;
-  if (normalized.contains('card')) return Icons.view_agenda_outlined;
-  if (normalized.contains('text') || normalized.contains('sms')) {
-    return Icons.sms_outlined;
-  }
-  return Icons.description_outlined;
 }
 
 String _templateSize(RcsTemplateDataModel template) {

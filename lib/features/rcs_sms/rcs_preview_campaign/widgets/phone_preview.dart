@@ -1,5 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:chewie/chewie.dart';
@@ -8,6 +10,7 @@ import 'package:synqer_io/core/app_injector.dart';
 import 'package:synqer_io/core/theme/theme_scope.dart';
 import 'package:synqer_io/core/utils/app_configarations.dart';
 import 'package:synqer_io/features/rcs_sms/rcs_preview_campaign/model/templete_details_model.dart';
+import 'package:synqer_io/features/rcs_sms/rcs_preview_campaign/utils/rcs_preview_template_mapper.dart';
 import 'package:video_player/video_player.dart';
 
 class PhonePreview extends StatefulWidget {
@@ -163,6 +166,7 @@ class TemplatePhonePreview extends StatelessWidget {
   final String? title;
   final IconData icon;
   final Map<String, String> variableValues;
+  final String suggestionType;
 
   const TemplatePhonePreview({
     super.key,
@@ -170,6 +174,7 @@ class TemplatePhonePreview extends StatelessWidget {
     required this.icon,
     this.title,
     this.variableValues = const {},
+    this.suggestionType = 'reply',
   });
 
   @override
@@ -184,13 +189,13 @@ class TemplatePhonePreview extends StatelessWidget {
   }
 }
 
-class LiveTemplatePhonePreview extends StatelessWidget {
+class CreateLiveTemplatePhonePreview extends StatelessWidget {
   final TemplateData template;
   final String? title;
   final IconData icon;
   final Map<String, String> variableValues;
 
-  const LiveTemplatePhonePreview({
+  const CreateLiveTemplatePhonePreview({
     super.key,
     required this.template,
     required this.icon,
@@ -215,6 +220,7 @@ class RcsPhonePreviewView extends StatefulWidget {
   final IconData icon;
   final String fallbackType;
   final Map<String, String> variableValues;
+  final String suggestionType;
 
   const RcsPhonePreviewView({
     super.key,
@@ -223,6 +229,7 @@ class RcsPhonePreviewView extends StatefulWidget {
     required this.icon,
     this.fallbackType = '',
     this.variableValues = const {},
+    this.suggestionType = 'reply',
   });
 
   @override
@@ -265,7 +272,9 @@ class _RcsPhonePreviewViewState extends State<RcsPhonePreviewView> {
 
     late final VideoPlayerController videoController;
     try {
-      videoController = VideoPlayerController.networkUrl(Uri.parse(url));
+      videoController = _hasNetworkScheme(url)
+          ? VideoPlayerController.networkUrl(Uri.parse(url))
+          : VideoPlayerController.file(File(url));
       await videoController.initialize();
     } catch (_) {
       _activeVideoUrl = null;
@@ -531,25 +540,12 @@ class _TextPreview extends StatelessWidget {
       child: SingleChildScrollView(
         child: Align(
           alignment: Alignment.centerLeft,
-          child: _MessageBubble(
-            width: 180,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (title.trim().isNotEmpty) ...[
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF111111),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                ],
-                Text(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _MessageBubble(
+                width: 180,
+                child: Text(
                   _messageWithVariableValues(
                     message,
                     variables,
@@ -561,9 +557,10 @@ class _TextPreview extends StatelessWidget {
                     height: 1.3,
                   ),
                 ),
-                _SuggestionButtons(suggestions: suggestions),
-              ],
-            ),
+              ),
+
+              _SuggestionButtons(suggestions: suggestions),
+            ],
           ),
         ),
       ),
@@ -805,6 +802,8 @@ class _MediaPreviewState extends State<_MediaPreview> {
       color: const Color(0xFF050505),
       child: url.isEmpty
           ? const _EmptyMedia()
+          : _isPdfUrl(url)
+          ? const _PdfMedia()
           : _isVideoUrl(url)
           ? _videoFailed
                 ? const _EmptyMedia()
@@ -820,6 +819,14 @@ class _MediaPreviewState extends State<_MediaPreview> {
                     ),
                   )
                 : ClipRect(child: Chewie(controller: widget.chewieController!))
+          : _hasLocalFile(url)
+          ? Image.file(
+              File(url),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (_, __, ___) => const _EmptyMedia(),
+            )
           : CachedNetworkImage(
               imageUrl: url,
               fit: BoxFit.cover,
@@ -839,11 +846,12 @@ class _SuggestionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final visibleSuggestions = suggestions
         .where(
           (suggestion) => suggestion.displayText?.trim().isNotEmpty == true,
         )
-        .take(2)
+        .take(3)
         .toList();
 
     if (visibleSuggestions.isEmpty) return const SizedBox.shrink();
@@ -857,23 +865,49 @@ class _SuggestionButtons extends StatelessWidget {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
-              color: const Color(0xFFEDEBFF),
-              borderRadius: BorderRadius.circular(12),
+              color: c.primary.withOpacity(.3),
+              border: Border.all(color: c.primary.withOpacity(.3)),
+              borderRadius: BorderRadius.circular(18),
             ),
-            child: Text(
-              suggestion.displayText!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF6257FF),
-                fontSize: 8,
-                fontWeight: FontWeight.w800,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _rcsTextSuggestion(suggestion.suggestionType),
+                  size: 12,
+                  // color: c.primary,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  suggestion.displayText!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           );
         }).toList(),
       ),
     );
+  }
+}
+
+IconData _rcsTextSuggestion(String? suggestionType) {
+  switch (normalizeRcsSuggestionType(suggestionType)) {
+    case 'reply':
+      return Icons.reply_sharp;
+    case 'url_action':
+      return Icons.link_outlined;
+    case 'dialer_action':
+      return Icons.phone_outlined;
+    default:
+      return Icons.message_outlined;
   }
 }
 
@@ -1017,6 +1051,17 @@ class _MediaLoading extends StatelessWidget {
   }
 }
 
+class _PdfMedia extends StatelessWidget {
+  const _PdfMedia();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Icon(Icons.picture_as_pdf_outlined, color: Colors.white54),
+    );
+  }
+}
+
 String? _mediaUrl(String? fileName, List<String>? mediaUrls, [int index = 0]) {
   final directFile = fileName?.trim();
   final safeIndex = mediaUrls != null && index < mediaUrls.length ? index : 0;
@@ -1066,8 +1111,17 @@ bool _isVideoUrl(String url) {
       normalized.endsWith('.webm');
 }
 
+bool _isPdfUrl(String url) {
+  return url.toLowerCase().split('?').first.endsWith('.pdf');
+}
+
 bool _hasNetworkScheme(String url) {
   return url.startsWith('http://') || url.startsWith('https://');
+}
+
+bool _hasLocalFile(String url) {
+  if (_hasNetworkScheme(url)) return false;
+  return File(url).existsSync();
 }
 
 List<String> _variablePlaceholders(String variable) {
