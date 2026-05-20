@@ -35,7 +35,201 @@ class PhonePreview extends StatefulWidget {
 }
 
 class _PhonePreviewState extends State<PhonePreview> {
+  @override
+  Widget build(BuildContext context) {
+    final initialTemplate = widget.initialTemplate;
+    if (initialTemplate != null) {
+      return TemplatePhonePreview(
+        template: initialTemplate,
+        title: widget.templateName,
+        icon: widget.icon,
+        variableValues: widget.variableValues,
+      );
+    }
+
+    return FetchedPhonePreview(
+      templateId: widget.templateId,
+      templateName: widget.templateName,
+      templateType: widget.templateType,
+      icon: widget.icon,
+      variableValues: widget.variableValues,
+      onTemplateLoaded: widget.onTemplateLoaded,
+    );
+  }
+}
+
+class FetchedPhonePreview extends StatefulWidget {
+  final String templateId;
+  final String templateName;
+  final String templateType;
+  final IconData icon;
+  final Map<String, String> variableValues;
+  final ValueChanged<TemplateData>? onTemplateLoaded;
+
+  const FetchedPhonePreview({
+    super.key,
+    required this.templateId,
+    required this.templateName,
+    required this.templateType,
+    required this.icon,
+    this.variableValues = const {},
+    this.onTemplateLoaded,
+  });
+
+  @override
+  State<FetchedPhonePreview> createState() => _FetchedPhonePreviewState();
+}
+
+class _FetchedPhonePreviewState extends State<FetchedPhonePreview> {
   late Future<SingleTempleteDataModel> _templateFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _templateFuture = _fetchTemplate();
+  }
+
+  @override
+  void didUpdateWidget(covariant FetchedPhonePreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.templateId != widget.templateId) {
+      setState(() {
+        _templateFuture = _fetchTemplate();
+      });
+    }
+  }
+
+  Future<SingleTempleteDataModel> _fetchTemplate() {
+    return AppInjector.rcsPreviewRepo.fetchTempleteById(widget.templateId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+
+    return FutureBuilder<SingleTempleteDataModel>(
+      future: _templateFuture,
+      builder: (context, snapshot) {
+        final isLoading = snapshot.connectionState == ConnectionState.waiting;
+        final hasError = snapshot.hasError;
+        final template = snapshot.data?.data;
+
+        if (template != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            widget.onTemplateLoaded?.call(template);
+          });
+        }
+
+        if (isLoading) {
+          return _PhonePreviewFrame(
+            icon: widget.icon,
+            title: widget.templateName,
+            child: _PhoneStatus(
+              key: const ValueKey('loading'),
+              message: 'Loading preview...',
+              isLoading: true,
+              color: c.primary,
+            ),
+          );
+        }
+
+        if (hasError || template == null) {
+          return _PhonePreviewFrame(
+            icon: widget.icon,
+            title: widget.templateName,
+            child: _PhoneStatus(
+              key: const ValueKey('error'),
+              message: 'Preview unavailable',
+              icon: Icons.error_outline_rounded,
+              color: c.error,
+            ),
+          );
+        }
+
+        return RcsPhonePreviewView(
+          template: template,
+          title: widget.templateName,
+          icon: widget.icon,
+          fallbackType: widget.templateType,
+          variableValues: widget.variableValues,
+        );
+      },
+    );
+  }
+}
+
+class TemplatePhonePreview extends StatelessWidget {
+  final TemplateData template;
+  final String? title;
+  final IconData icon;
+  final Map<String, String> variableValues;
+
+  const TemplatePhonePreview({
+    super.key,
+    required this.template,
+    required this.icon,
+    this.title,
+    this.variableValues = const {},
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RcsPhonePreviewView(
+      template: template,
+      title: title ?? template.name ?? 'Your Bot',
+      icon: icon,
+      fallbackType: template.type ?? '',
+      variableValues: variableValues,
+    );
+  }
+}
+
+class LiveTemplatePhonePreview extends StatelessWidget {
+  final TemplateData template;
+  final String? title;
+  final IconData icon;
+  final Map<String, String> variableValues;
+
+  const LiveTemplatePhonePreview({
+    super.key,
+    required this.template,
+    required this.icon,
+    this.title,
+    this.variableValues = const {},
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TemplatePhonePreview(
+      template: template,
+      title: title,
+      icon: icon,
+      variableValues: variableValues,
+    );
+  }
+}
+
+class RcsPhonePreviewView extends StatefulWidget {
+  final TemplateData template;
+  final String title;
+  final IconData icon;
+  final String fallbackType;
+  final Map<String, String> variableValues;
+
+  const RcsPhonePreviewView({
+    super.key,
+    required this.template,
+    required this.title,
+    required this.icon,
+    this.fallbackType = '',
+    this.variableValues = const {},
+  });
+
+  @override
+  State<RcsPhonePreviewView> createState() => _RcsPhonePreviewViewState();
+}
+
+class _RcsPhonePreviewViewState extends State<RcsPhonePreviewView> {
   final ValueNotifier<int> _carouselIndex = ValueNotifier(0);
 
   VideoPlayerController? _videoController;
@@ -45,19 +239,14 @@ class _PhonePreviewState extends State<PhonePreview> {
   @override
   void initState() {
     super.initState();
-    _templateFuture = _fetchTemplate();
   }
 
   @override
-  void didUpdateWidget(covariant PhonePreview oldWidget) {
+  void didUpdateWidget(covariant RcsPhonePreviewView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.templateId != widget.templateId ||
-        oldWidget.initialTemplate != widget.initialTemplate) {
+    if (oldWidget.template != widget.template) {
       _disposeVideo();
       _carouselIndex.value = 0;
-      setState(() {
-        _templateFuture = _fetchTemplate();
-      });
     }
   }
 
@@ -66,17 +255,6 @@ class _PhonePreviewState extends State<PhonePreview> {
     _disposeVideo();
     _carouselIndex.dispose();
     super.dispose();
-  }
-
-  Future<SingleTempleteDataModel> _fetchTemplate() {
-    final initialTemplate = widget.initialTemplate;
-    if (initialTemplate != null) {
-      return Future.value(
-        SingleTempleteDataModel(success: true, data: initialTemplate),
-      );
-    }
-
-    return AppInjector.rcsPreviewRepo.fetchTempleteById(widget.templateId);
   }
 
   Future<void> _setupVideo(String url) async {
@@ -128,6 +306,39 @@ class _PhonePreviewState extends State<PhonePreview> {
 
   @override
   Widget build(BuildContext context) {
+    return _PhonePreviewFrame(
+      icon: widget.icon,
+      title: widget.title,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        child: _TemplateBody(
+          key: ValueKey(_templatePreviewKey(widget.template)),
+          template: widget.template,
+          fallbackName: widget.title,
+          fallbackType: widget.fallbackType,
+          carouselIndex: _carouselIndex,
+          chewieController: _chewieController,
+          setupVideo: _setupVideo,
+          variableValues: widget.variableValues,
+        ),
+      ),
+    );
+  }
+}
+
+class _PhonePreviewFrame extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Widget child;
+
+  const _PhonePreviewFrame({
+    required this.icon,
+    required this.title,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.colors;
 
     return Container(
@@ -144,60 +355,14 @@ class _PhonePreviewState extends State<PhonePreview> {
           ),
         ],
       ),
-      child: FutureBuilder<SingleTempleteDataModel>(
-        future: _templateFuture,
-        builder: (context, snapshot) {
-          final isLoading = snapshot.connectionState == ConnectionState.waiting;
-          final hasError = snapshot.hasError;
-          final template = snapshot.data?.data;
-
-          if (template != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              widget.onTemplateLoaded?.call(template);
-            });
-          }
-
-          return Column(
-            children: [
-              _PhoneHeader(icon: widget.icon, title: widget.templateName),
-              const SizedBox(height: 12),
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  child: isLoading
-                      ? _PhoneStatus(
-                          key: const ValueKey('loading'),
-                          message: 'Loading preview...',
-                          isLoading: true,
-                          color: c.primary,
-                        )
-                      : hasError || template == null
-                      ? _PhoneStatus(
-                          key: const ValueKey('error'),
-                          message: 'Preview unavailable',
-                          icon: Icons.error_outline_rounded,
-                          color: c.error,
-                        )
-                      : _TemplateBody(
-                          key: ValueKey(_templatePreviewKey(template)),
-                          template: template,
-                          fallbackName: widget.templateName,
-                          fallbackType: widget.templateType,
-                          carouselIndex: _carouselIndex,
-                          chewieController: _chewieController,
-                          setupVideo: _setupVideo,
-                          variableValues: widget.variableValues,
-                        ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _MessageSendButtonView(
-                primaryColor: c.primary,
-                iconColor: c.onBrand,
-              ),
-            ],
-          );
-        },
+      child: Column(
+        children: [
+          _PhoneHeader(icon: icon, title: title),
+          const SizedBox(height: 12),
+          Expanded(child: child),
+          const SizedBox(height: 10),
+          _MessageSendButtonView(primaryColor: c.primary, iconColor: c.onBrand),
+        ],
       ),
     );
   }

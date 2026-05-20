@@ -81,12 +81,10 @@ class _PreviewPanel extends StatelessWidget {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 340),
-          child: PhonePreview(
-            templateId: template.id,
-            templateName: template.name,
-            templateType: template.type,
+          child: TemplatePhonePreview(
+            template: previewTemplate,
+            title: template.name,
             icon: _templateIcon(template.type),
-            initialTemplate: previewTemplate,
           ),
         ),
       ),

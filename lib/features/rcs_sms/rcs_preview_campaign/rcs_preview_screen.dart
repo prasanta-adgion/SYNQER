@@ -264,7 +264,7 @@ class _PreviewCampaignState extends State<PreviewCampaign> {
                       valueListenable: _templateVariableValues,
                       builder: (context, variableValues, _) {
                         final selectedTemplate = template ?? templates.first;
-                        return PhonePreview(
+                        return FetchedPhonePreview(
                           templateId: selectedTemplate.id,
                           templateName: selectedTemplate.name,
                           templateType: selectedTemplate.type,
